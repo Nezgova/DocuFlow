@@ -1,0 +1,2 @@
+import { Construction } from 'lucide-react'
+export default function PlaceholderPage({ title, description }) { return <div className="grid min-h-[55vh] place-items-center rounded-2xl border border-dashed border-ink/20 bg-white p-8 text-center"><div><div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-mint text-moss"><Construction /></div><h1 className="mt-5 text-2xl font-extrabold">{title}</h1><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink/60">{description}</p></div></div> }

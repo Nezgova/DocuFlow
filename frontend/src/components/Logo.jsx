@@ -1,0 +1,1 @@
+export default function Logo() { return <div className="flex items-center gap-2.5"><div className="grid h-9 w-9 place-items-center rounded-xl bg-moss text-sm font-extrabold text-white shadow-lg shadow-moss/20">D</div><span className="text-lg font-extrabold tracking-tight">DocuFlow</span></div> }
