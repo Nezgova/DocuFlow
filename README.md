@@ -22,7 +22,11 @@ DocuFlow centralizes internal document review workflows: employees upload PDFs, 
 
 3. Open `http://localhost:5173` and sign in using the seeded administrator email and password.
 
-The script opens separate API and frontend terminals. The API is at `http://localhost:8080/api`; the frontend proxies requests directly to it.
+4. Optionally import [database/demo_users.sql](database/demo_users.sql) in phpMyAdmin to create a manager and employee for testing document-review workflows.
+
+The script opens separate API and frontend terminals. The frontend calls the API directly.
+
+If port 8080 is in use, `run.ps1` automatically switches the API to port 8081 and configures the frontend accordingly.
 
 ### Run manually
 
