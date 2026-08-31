@@ -1,0 +1,4 @@
+package com.docuflow.entity;
+import jakarta.persistence.*; import java.time.Instant;
+@Entity @Table(name="approvals",uniqueConstraints=@UniqueConstraint(columnNames={"document_id","reviewer_id"}))
+public class Approval { @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id; @ManyToOne(optional=false) private Document document; @ManyToOne(optional=false) private User reviewer; @Enumerated(EnumType.STRING) @Column(nullable=false) private ApprovalDecision decision=ApprovalDecision.PENDING; private Instant decidedAt; protected Approval(){} public Approval(Document d,User u){document=d;reviewer=u;} public Long getId(){return id;} public User getReviewer(){return reviewer;} public ApprovalDecision getDecision(){return decision;} public Instant getDecidedAt(){return decidedAt;} public void decide(ApprovalDecision d){decision=d;decidedAt=Instant.now();} }

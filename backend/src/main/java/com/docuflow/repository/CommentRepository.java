@@ -1,0 +1,1 @@
+package com.docuflow.repository; import com.docuflow.entity.*; import java.util.*; import org.springframework.data.jpa.repository.JpaRepository; public interface CommentRepository extends JpaRepository<Comment,Long>{List<Comment> findByDocumentIdOrderByCreatedAtAsc(Long documentId);}

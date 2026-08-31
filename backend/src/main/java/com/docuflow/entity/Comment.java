@@ -1,0 +1,3 @@
+package com.docuflow.entity;
+import jakarta.persistence.*; import java.time.Instant;
+@Entity @Table(name="comments") public class Comment { @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id; @ManyToOne(optional=false) private Document document; @ManyToOne(optional=false) private User author; @Column(nullable=false,length=2000) private String content; @Column(nullable=false,updatable=false) private Instant createdAt=Instant.now(); protected Comment(){} public Comment(Document d,User a,String c){document=d;author=a;content=c;} public Long getId(){return id;} public User getAuthor(){return author;} public String getContent(){return content;} public Instant getCreatedAt(){return createdAt;} }
