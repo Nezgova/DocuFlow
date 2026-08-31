@@ -1,0 +1,4 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import api from '../services/api'
+export default function ArchivePage(){const[docs,setDocs]=useState([]);useEffect(()=>{api.get('/documents',{params:{size:100}}).then(r=>setDocs(r.data.content.filter(d=>d.status==='ARCHIVED')))},[]);return <><p className="font-mono text-xs uppercase tracking-[.14em] text-moss">Records</p><h1 className="mt-2 text-3xl font-extrabold">Archive</h1><div className="mt-7 rounded-2xl border border-ink/10 bg-white">{docs.map(d=><Link key={d.id} to={`/documents/${d.id}`} className="block border-b border-ink/10 p-5 hover:bg-sand"><b>{d.title}</b><p className="mt-1 text-sm text-ink/55">{d.originalFileName} · Archived</p></Link>)}{!docs.length&&<p className="p-10 text-center text-sm text-ink/55">No archived documents.</p>}</div></>}
