@@ -9,7 +9,7 @@ DocuFlow centralizes internal document review workflows: employees upload PDFs, 
 
 ## Quick start on Windows
 
-1. Create a local MySQL database: `CREATE DATABASE docuflow;`.
+1. In phpMyAdmin, import [database/docuflow_schema.sql](database/docuflow_schema.sql) (or create a local MySQL database named `docuflow`).
 2. In PowerShell, set the development configuration (replace the password):
 
    ```powershell
