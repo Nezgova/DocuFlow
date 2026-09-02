@@ -63,7 +63,7 @@ export default function DocumentDetailPage() {
               {signed ? <CheckCircle2 size={13} /> : ready ? <PenLine size={13} /> : <Clock size={13} />}
               {doc.status.replaceAll('_', ' ')}
             </span>
-            <span className="text-xs text-ink/50">· {doc.originalFileName}</span>
+            <span className="text-xs text-ink/50">· {doc.originalFileName} {doc.departmentName ? `· ${doc.departmentName}` : ''}</span>
           </div>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{doc.title}</h1>
           {doc.description && <p className="mt-1 text-sm text-ink/65">{doc.description}</p>}

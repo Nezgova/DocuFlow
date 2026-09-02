@@ -6,16 +6,28 @@ CREATE DATABASE IF NOT EXISTS docuflow
   COLLATE utf8mb4_unicode_ci;
 USE docuflow;
 
+CREATE TABLE IF NOT EXISTS departments (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  description VARCHAR(500) NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  CONSTRAINT uk_departments_name UNIQUE (name)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT NOT NULL AUTO_INCREMENT,
   full_name VARCHAR(120) NOT NULL,
   email VARCHAR(190) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('ADMINISTRATOR', 'MANAGER', 'EMPLOYEE') NOT NULL,
+  department_id BIGINT NULL,
   active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
-  CONSTRAINT uk_users_email UNIQUE (email)
+  CONSTRAINT uk_users_email UNIQUE (email),
+  KEY idx_users_department (department_id),
+  CONSTRAINT fk_users_department FOREIGN KEY (department_id) REFERENCES departments(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS documents (
@@ -26,13 +38,16 @@ CREATE TABLE IF NOT EXISTS documents (
   file_size BIGINT NOT NULL,
   status ENUM('DRAFT', 'PENDING', 'APPROVED', 'REJECTED', 'READY_FOR_SIGNATURE', 'SIGNED', 'ARCHIVED') NOT NULL DEFAULT 'DRAFT',
   owner_id BIGINT NOT NULL,
+  department_id BIGINT NULL,
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   KEY idx_documents_owner (owner_id),
+  KEY idx_documents_department (department_id),
   KEY idx_documents_status (status),
   KEY idx_documents_created_at (created_at),
-  CONSTRAINT fk_documents_owner FOREIGN KEY (owner_id) REFERENCES users(id)
+  CONSTRAINT fk_documents_owner FOREIGN KEY (owner_id) REFERENCES users(id),
+  CONSTRAINT fk_documents_department FOREIGN KEY (department_id) REFERENCES departments(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS approvals (
@@ -74,3 +89,24 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   CONSTRAINT fk_activity_logs_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
   CONSTRAINT fk_activity_logs_actor FOREIGN KEY (actor_id) REFERENCES users(id)
 ) ENGINE=InnoDB;
+
+-- Seed default departments if not present
+INSERT INTO departments (name, description)
+SELECT 'Human Resources', 'Personnel management, recruitment, and employee relations'
+WHERE NOT EXISTS (SELECT 1 FROM departments WHERE name = 'Human Resources');
+
+INSERT INTO departments (name, description)
+SELECT 'Finance', 'Accounting, budgeting, and financial reporting'
+WHERE NOT EXISTS (SELECT 1 FROM departments WHERE name = 'Finance');
+
+INSERT INTO departments (name, description)
+SELECT 'Legal', 'Contracts, compliance, and regulatory matters'
+WHERE NOT EXISTS (SELECT 1 FROM departments WHERE name = 'Legal');
+
+INSERT INTO departments (name, description)
+SELECT 'IT', 'Information technology, systems, and security'
+WHERE NOT EXISTS (SELECT 1 FROM departments WHERE name = 'IT');
+
+INSERT INTO departments (name, description)
+SELECT 'Marketing', 'Brand management, advertising, and communications'
+WHERE NOT EXISTS (SELECT 1 FROM departments WHERE name = 'Marketing');
