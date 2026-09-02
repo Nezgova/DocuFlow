@@ -7,22 +7,26 @@ import UploadDocumentDialog from '../components/UploadDocumentDialog'
 export default function DocumentsPage(){
   const [docs, setDocs] = useState([])
   const [departments, setDepartments] = useState([])
+  const [categories, setCategories] = useState([])
   const [search, setSearch] = useState('')
   const [departmentId, setDepartmentId] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [upload, setUpload] = useState(false)
 
   const load = () => {
     const params = {}
     if (search) params.q = search
     if (departmentId) params.departmentId = departmentId
+    if (categoryId) params.categoryId = categoryId
     api.get('/documents', { params }).then(r => setDocs(r.data.content))
   }
 
   useEffect(() => {
     api.get('/departments').then(r => setDepartments(r.data)).catch(() => {})
+    api.get('/categories').then(r => setCategories(r.data)).catch(() => {})
   }, [])
 
-  useEffect(() => { load() }, [search, departmentId])
+  useEffect(() => { load() }, [search, departmentId, categoryId])
 
   const sortedDocs = [...docs].sort((a,b)=>{
     if(a.status==='PENDING'&&b.status!=='PENDING')return-1;
@@ -47,7 +51,15 @@ export default function DocumentsPage(){
           <Search className="absolute left-3 top-3.5 text-ink/35" size={18}/>
           <input className="field pl-10 w-full" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents…"/>
         </div>
-        <div className="w-full sm:w-64">
+        <div className="w-full sm:w-48">
+          <select className="field w-full" value={categoryId} onChange={e=>setCategoryId(e.target.value)}>
+            <option value="">All Categories</option>
+            {categories.map(c=>(
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-full sm:w-48">
           <select className="field w-full" value={departmentId} onChange={e=>setDepartmentId(e.target.value)}>
             <option value="">All Departments</option>
             {departments.map(d=>(
@@ -64,7 +76,14 @@ export default function DocumentsPage(){
             <Link to={`/documents/${d.id}`} key={d.id} className={`flex flex-col sm:flex-row sm:items-center gap-4 border-b border-ink/10 p-5 transition ${isPending ? 'bg-mint/35 hover:bg-mint/60' : 'hover:bg-sand'}`}>
               <FileText className="text-moss shrink-0"/>
               <div className="flex-1">
-                <p className="font-bold">{d.title}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold">{d.title}</p>
+                  {d.categoryName && (
+                    <span className="rounded-md bg-sand px-2 py-0.5 text-xs font-bold text-ink/70">
+                      {d.categoryName}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-ink/55">{d.owner} {d.departmentName ? `· ${d.departmentName}` : ''} · {d.originalFileName}</p>
               </div>
               <span className={`self-start sm:self-center rounded-full px-3 py-1 text-xs font-bold ${isPending ? 'bg-mint text-moss' : 'text-moss'}`}>

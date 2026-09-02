@@ -15,6 +15,15 @@ CREATE TABLE IF NOT EXISTS departments (
   CONSTRAINT uk_departments_name UNIQUE (name)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS categories (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  description VARCHAR(500) NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  CONSTRAINT uk_categories_name UNIQUE (name)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT NOT NULL AUTO_INCREMENT,
   full_name VARCHAR(120) NOT NULL,
@@ -33,21 +42,25 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS documents (
   id BIGINT NOT NULL AUTO_INCREMENT,
   title VARCHAR(180) NOT NULL,
+  description VARCHAR(2000) NULL,
   stored_file_name VARCHAR(255) NOT NULL,
   original_file_name VARCHAR(255) NOT NULL,
   file_size BIGINT NOT NULL,
   status ENUM('DRAFT', 'PENDING', 'APPROVED', 'REJECTED', 'READY_FOR_SIGNATURE', 'SIGNED', 'ARCHIVED') NOT NULL DEFAULT 'DRAFT',
   owner_id BIGINT NOT NULL,
   department_id BIGINT NULL,
+  category_id BIGINT NULL,
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   KEY idx_documents_owner (owner_id),
   KEY idx_documents_department (department_id),
+  KEY idx_documents_category (category_id),
   KEY idx_documents_status (status),
   KEY idx_documents_created_at (created_at),
   CONSTRAINT fk_documents_owner FOREIGN KEY (owner_id) REFERENCES users(id),
-  CONSTRAINT fk_documents_department FOREIGN KEY (department_id) REFERENCES departments(id)
+  CONSTRAINT fk_documents_department FOREIGN KEY (department_id) REFERENCES departments(id),
+  CONSTRAINT fk_documents_category FOREIGN KEY (category_id) REFERENCES categories(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS approvals (
@@ -110,3 +123,36 @@ WHERE NOT EXISTS (SELECT 1 FROM departments WHERE name = 'IT');
 INSERT INTO departments (name, description)
 SELECT 'Marketing', 'Brand management, advertising, and communications'
 WHERE NOT EXISTS (SELECT 1 FROM departments WHERE name = 'Marketing');
+
+-- Seed default categories if not present
+INSERT INTO categories (name, description)
+SELECT 'Contract', 'Legal agreements and binding contracts'
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Contract');
+
+INSERT INTO categories (name, description)
+SELECT 'Invoice', 'Billing, invoices, and financial payment requests'
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Invoice');
+
+INSERT INTO categories (name, description)
+SELECT 'Policy', 'Company policies, handbooks, and guidelines'
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Policy');
+
+INSERT INTO categories (name, description)
+SELECT 'Report', 'Business, performance, and audit reports'
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Report');
+
+INSERT INTO categories (name, description)
+SELECT 'Meeting Minutes', 'Official notes and minutes from meetings'
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Meeting Minutes');
+
+INSERT INTO categories (name, description)
+SELECT 'Purchase Order', 'Procurement and purchase order documents'
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Purchase Order');
+
+INSERT INTO categories (name, description)
+SELECT 'Internship Convention', 'Student internship agreements and conventions'
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Internship Convention');
+
+INSERT INTO categories (name, description)
+SELECT 'Technical Documentation', 'Technical specifications, architectures, and manuals'
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Technical Documentation');

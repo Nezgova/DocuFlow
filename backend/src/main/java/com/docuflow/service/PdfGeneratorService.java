@@ -35,7 +35,17 @@ public class PdfGeneratorService {
         String actualSignerName = (signatureName != null && !signatureName.isBlank()) ? signatureName : signer.getFullName();
 
         try {
-            try (PDDocument document = Loader.loadPDF(pdfBytes)) {
+            PDDocument loadedDoc;
+            try {
+                loadedDoc = Loader.loadPDF(pdfBytes, "");
+            } catch (Exception e) {
+                loadedDoc = Loader.loadPDF(pdfBytes);
+            }
+            if (loadedDoc.isEncrypted()) {
+                loadedDoc.setAllSecurityToBeRemoved(true);
+            }
+            final PDDocument document = loadedDoc;
+            try (document) {
                 PDPage page = new PDPage(PDRectangle.A4);
                 document.addPage(page);
 

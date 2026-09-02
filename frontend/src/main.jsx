@@ -11,9 +11,10 @@ import LoginPage from './pages/LoginPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 import PeoplePage from './pages/PeoplePage'
 import DepartmentsPage from './pages/DepartmentsPage'
+import CategoriesPage from './pages/CategoriesPage'
 import ArchivePage from './pages/ArchivePage'
 import AppErrorBoundary from './components/AppErrorBoundary'
 
 function Protected() { const { user, loading } = useAuth(); if (loading) return <div className="grid min-h-screen place-items-center text-sm font-bold text-ink/60">Loading workspace…</div>; return user ? <AppLayout/> : <Navigate to="/login" replace/> }
-function App(){return <Routes><Route path="/login" element={<LoginPage/>}/><Route element={<Protected/>}><Route index element={<DashboardPage/>}/><Route path="documents" element={<DocumentsPage/>}/><Route path="documents/:id" element={<DocumentDetailPage/>}/><Route path="departments" element={<DepartmentsPage/>}/><Route path="archive" element={<ArchivePage/>}/><Route path="users" element={<PeoplePage/>}/></Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes>}
+function App(){return <Routes><Route path="/login" element={<LoginPage/>}/><Route element={<Protected/>}><Route index element={<DashboardPage/>}/><Route path="documents" element={<DocumentsPage/>}/><Route path="documents/:id" element={<DocumentDetailPage/>}/><Route path="departments" element={<DepartmentsPage/>}/><Route path="categories" element={<CategoriesPage/>}/><Route path="archive" element={<ArchivePage/>}/><Route path="users" element={<PeoplePage/>}/></Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes>}
 createRoot(document.getElementById('root')).render(<StrictMode><AppErrorBoundary><BrowserRouter><AuthProvider><App/></AuthProvider></BrowserRouter></AppErrorBoundary></StrictMode>)

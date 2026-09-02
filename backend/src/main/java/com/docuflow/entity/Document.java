@@ -15,6 +15,7 @@ public class Document {
  @Enumerated(EnumType.STRING) @Column(nullable=false,length=30) private DocumentStatus status=DocumentStatus.DRAFT;
  @ManyToOne(optional=false,fetch=FetchType.LAZY) private User owner;
  @ManyToOne(fetch=FetchType.LAZY) private Department department;
+ @ManyToOne(fetch=FetchType.LAZY) private Category category;
  @Column(nullable=false,updatable=false) private Instant createdAt=Instant.now();
  @Column(nullable=false) private Instant updatedAt=Instant.now();
  @OneToMany(mappedBy="document",cascade=CascadeType.ALL,orphanRemoval=true) private List<Approval> approvals=new ArrayList<>();
@@ -40,6 +41,8 @@ public class Document {
  public DocumentStatus getStatus(){return status;}
  public User getOwner(){return owner;}
  public Department getDepartment(){return department;}
+ public Category getCategory(){return category;}
+ public void setCategory(Category category){this.category=category; touch();}
  public Instant getCreatedAt(){return createdAt;}
  public Instant getUpdatedAt(){return updatedAt;}
  public List<Approval> getApprovals(){return approvals;}

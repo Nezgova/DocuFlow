@@ -1,6 +1,7 @@
 package com.docuflow.config;
 
 import com.docuflow.entity.*;
+import com.docuflow.repository.CategoryRepository;
 import com.docuflow.repository.DepartmentRepository;
 import com.docuflow.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,7 +14,7 @@ import java.util.List;
 @Configuration
 public class DataInitializer {
   @Bean
-  CommandLineRunner seedData(UserRepository users, DepartmentRepository departments, PasswordEncoder encoder,
+  CommandLineRunner seedData(UserRepository users, DepartmentRepository departments, CategoryRepository categories, PasswordEncoder encoder,
                              @Value("${SEED_ADMIN_EMAIL:}") String email,
                              @Value("${SEED_ADMIN_PASSWORD:}") String password) {
     return args -> {
@@ -24,6 +25,19 @@ public class DataInitializer {
           new Department("Legal", "Contracts, compliance, and regulatory matters"),
           new Department("IT", "Information technology, systems, and security"),
           new Department("Marketing", "Brand management, advertising, and communications")
+        ));
+      }
+
+      if (categories.count() == 0) {
+        categories.saveAll(List.of(
+          new Category("Contract", "Legal agreements and binding contracts"),
+          new Category("Invoice", "Billing, invoices, and financial payment requests"),
+          new Category("Policy", "Company policies, handbooks, and guidelines"),
+          new Category("Report", "Business, performance, and audit reports"),
+          new Category("Meeting Minutes", "Official notes and minutes from meetings"),
+          new Category("Purchase Order", "Procurement and purchase order documents"),
+          new Category("Internship Convention", "Student internship agreements and conventions"),
+          new Category("Technical Documentation", "Technical specifications, architectures, and manuals")
         ));
       }
 
