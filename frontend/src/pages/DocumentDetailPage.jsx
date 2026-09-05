@@ -4,7 +4,7 @@ import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import RestartDocumentDialog from '../components/RestartDocumentDialog'
 import SignDocumentDialog from '../components/SignDocumentDialog'
-import { FileText, CheckCircle2, PenLine, ShieldCheck, Clock } from 'lucide-react'
+import { FileText, CheckCircle2, PenLine, ShieldCheck, Clock, Hash } from 'lucide-react'
 
 export default function DocumentDetailPage() {
   const { id } = useParams()
@@ -58,12 +58,23 @@ export default function DocumentDetailPage() {
 
       <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${signed ? 'bg-moss text-white' : ready ? 'bg-mint text-moss' : 'bg-sand text-ink/70'}`}>
               {signed ? <CheckCircle2 size={13} /> : ready ? <PenLine size={13} /> : <Clock size={13} />}
               {doc.status.replaceAll('_', ' ')}
             </span>
-             <span className="text-xs text-ink/50">· {doc.originalFileName} {doc.categoryName ? `· ${doc.categoryName}` : ''} {doc.departmentName ? `· ${doc.departmentName}` : ''}</span>
+            {doc.categoryName && (
+              <span className="rounded-md bg-sand px-2 py-0.5 text-xs font-bold text-ink/70">
+                {doc.categoryName}
+              </span>
+            )}
+            {doc.tags && doc.tags.map(tagName => (
+              <span key={tagName} className="inline-flex items-center gap-1 rounded-md bg-mint/50 px-2 py-0.5 text-xs font-bold text-moss">
+                <Hash size={11} />
+                {tagName}
+              </span>
+            ))}
+             <span className="text-xs text-ink/50">· {doc.originalFileName} {doc.departmentName ? `· ${doc.departmentName}` : ''}</span>
           </div>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{doc.title}</h1>
           {doc.description && <p className="mt-1 text-sm text-ink/65">{doc.description}</p>}

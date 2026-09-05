@@ -1,4 +1,4 @@
-import { FileText, Search, Upload } from 'lucide-react'
+import { FileText, Hash, Search, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
@@ -8,9 +8,11 @@ export default function DocumentsPage(){
   const [docs, setDocs] = useState([])
   const [departments, setDepartments] = useState([])
   const [categories, setCategories] = useState([])
+  const [tags, setTags] = useState([])
   const [search, setSearch] = useState('')
   const [departmentId, setDepartmentId] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [tagId, setTagId] = useState('')
   const [upload, setUpload] = useState(false)
 
   const load = () => {
@@ -18,15 +20,17 @@ export default function DocumentsPage(){
     if (search) params.q = search
     if (departmentId) params.departmentId = departmentId
     if (categoryId) params.categoryId = categoryId
+    if (tagId) params.tagId = tagId
     api.get('/documents', { params }).then(r => setDocs(r.data.content))
   }
 
   useEffect(() => {
     api.get('/departments').then(r => setDepartments(r.data)).catch(() => {})
     api.get('/categories').then(r => setCategories(r.data)).catch(() => {})
+    api.get('/tags').then(r => setTags(r.data)).catch(() => {})
   }, [])
 
-  useEffect(() => { load() }, [search, departmentId, categoryId])
+  useEffect(() => { load() }, [search, departmentId, categoryId, tagId])
 
   const sortedDocs = [...docs].sort((a,b)=>{
     if(a.status==='PENDING'&&b.status!=='PENDING')return-1;
@@ -51,7 +55,7 @@ export default function DocumentsPage(){
           <Search className="absolute left-3 top-3.5 text-ink/35" size={18}/>
           <input className="field pl-10 w-full" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents…"/>
         </div>
-        <div className="w-full sm:w-48">
+        <div className="w-full sm:w-44">
           <select className="field w-full" value={categoryId} onChange={e=>setCategoryId(e.target.value)}>
             <option value="">All Categories</option>
             {categories.map(c=>(
@@ -59,7 +63,15 @@ export default function DocumentsPage(){
             ))}
           </select>
         </div>
-        <div className="w-full sm:w-48">
+        <div className="w-full sm:w-44">
+          <select className="field w-full" value={tagId} onChange={e=>setTagId(e.target.value)}>
+            <option value="">All Tags</option>
+            {tags.map(t=>(
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-full sm:w-44">
           <select className="field w-full" value={departmentId} onChange={e=>setDepartmentId(e.target.value)}>
             <option value="">All Departments</option>
             {departments.map(d=>(
@@ -76,15 +88,21 @@ export default function DocumentsPage(){
             <Link to={`/documents/${d.id}`} key={d.id} className={`flex flex-col sm:flex-row sm:items-center gap-4 border-b border-ink/10 p-5 transition ${isPending ? 'bg-mint/35 hover:bg-mint/60' : 'hover:bg-sand'}`}>
               <FileText className="text-moss shrink-0"/>
               <div className="flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <p className="font-bold">{d.title}</p>
                   {d.categoryName && (
                     <span className="rounded-md bg-sand px-2 py-0.5 text-xs font-bold text-ink/70">
                       {d.categoryName}
                     </span>
                   )}
+                  {d.tags && d.tags.map(tagName => (
+                    <span key={tagName} className="inline-flex items-center gap-1 rounded-md bg-mint/50 px-2 py-0.5 text-xs font-bold text-moss">
+                      <Hash size={11} />
+                      {tagName}
+                    </span>
+                  ))}
                 </div>
-                <p className="text-xs text-ink/55">{d.owner} {d.departmentName ? `· ${d.departmentName}` : ''} · {d.originalFileName}</p>
+                <p className="mt-1 text-xs text-ink/55">{d.owner} {d.departmentName ? `· ${d.departmentName}` : ''} · {d.originalFileName}</p>
               </div>
               <span className={`self-start sm:self-center rounded-full px-3 py-1 text-xs font-bold ${isPending ? 'bg-mint text-moss' : 'text-moss'}`}>
                 {d.status.replaceAll('_',' ')}

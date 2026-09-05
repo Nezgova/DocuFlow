@@ -22,15 +22,17 @@ public class DocumentService {
  private final CommentRepository comments;
  private final ActivityLogRepository activity;
  private final CategoryRepository categories;
+ private final TagRepository tagRepository;
  private final PdfGeneratorService pdfGenerator;
  private final Path storage;
 
- public DocumentService(DocumentRepository docs, UserRepository users, CommentRepository comments, ActivityLogRepository activity, CategoryRepository categories, PdfGeneratorService pdfGenerator, @Value("${app.storage-dir}") String storage) {
+ public DocumentService(DocumentRepository docs, UserRepository users, CommentRepository comments, ActivityLogRepository activity, CategoryRepository categories, TagRepository tagRepository, PdfGeneratorService pdfGenerator, @Value("${app.storage-dir}") String storage) {
   this.docs = docs;
   this.users = users;
   this.comments = comments;
   this.activity = activity;
   this.categories = categories;
+  this.tagRepository = tagRepository;
   this.pdfGenerator = pdfGenerator;
   this.storage = Paths.get(storage).toAbsolutePath().normalize();
  }
@@ -50,6 +52,18 @@ public class DocumentService {
     doc.setCategory(cat);
    }
 
+   Set<Tag> resolvedTags = new HashSet<>();
+   if (req.tags() != null) {
+    for (String tagName : req.tags()) {
+     if (tagName != null && !tagName.isBlank()) {
+      String normalized = tagName.toLowerCase().trim();
+      Tag tag = tagRepository.findByNameIgnoreCase(normalized).orElseGet(() -> tagRepository.save(new Tag(normalized)));
+      resolvedTags.add(tag);
+     }
+    }
+   }
+   doc.setTags(resolvedTags);
+
    var reviewers = users.findAllById(req.reviewerIds());
    if (reviewers.size() != new HashSet<>(req.reviewerIds()).size()) {
     throw new ApiException(HttpStatus.BAD_REQUEST, "One or more reviewers do not exist");
@@ -64,8 +78,8 @@ public class DocumentService {
  }
 
  @Transactional(readOnly = true)
- public Page<DocumentResponse> list(User user, String search, Long departmentId, Long categoryId, Pageable page) {
-  return docs.visibleTo(user, user.getRole() == Role.ADMINISTRATOR, search == null ? "" : search, departmentId, categoryId, page).map(this::map);
+ public Page<DocumentResponse> list(User user, String search, Long departmentId, Long categoryId, Long tagId, Pageable page) {
+  return docs.visibleTo(user, user.getRole() == Role.ADMINISTRATOR, search == null ? "" : search, departmentId, categoryId, tagId, page).map(this::map);
  }
 
  @Transactional(readOnly = true)
@@ -158,6 +172,18 @@ public class DocumentService {
     doc.setCategory(null);
    }
 
+   Set<Tag> resolvedTags = new HashSet<>();
+   if (request.tags() != null) {
+    for (String tagName : request.tags()) {
+     if (tagName != null && !tagName.isBlank()) {
+      String normalized = tagName.toLowerCase().trim();
+      Tag tag = tagRepository.findByNameIgnoreCase(normalized).orElseGet(() -> tagRepository.save(new Tag(normalized)));
+      resolvedTags.add(tag);
+     }
+    }
+   }
+   doc.setTags(resolvedTags);
+
    var reviewers = users.findAllById(request.reviewerIds());
    if (reviewers.size() != new HashSet<>(request.reviewerIds()).size()) {
     throw new ApiException(HttpStatus.BAD_REQUEST, "One or more reviewers do not exist");
@@ -237,6 +263,7 @@ public class DocumentService {
    d.getDepartment() != null ? d.getDepartment().getName() : null,
    d.getCategory() != null ? d.getCategory().getId() : null,
    d.getCategory() != null ? d.getCategory().getName() : null,
+   d.getTags().stream().map(Tag::getName).sorted().toList(),
    d.getCreatedAt(),
    d.getApprovals().stream().map(a -> new Reviewer(a.getReviewer().getId(), a.getReviewer().getFullName(), a.getDecision())).toList()
   );

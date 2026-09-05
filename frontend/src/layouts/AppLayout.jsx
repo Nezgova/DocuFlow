@@ -1,4 +1,4 @@
-import { Archive, Building2, FileText, Layers, LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react'
+import { Archive, Building2, FileText, Hash, Layers, LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
@@ -8,6 +8,7 @@ const links = [
   { to: '/documents', label: 'Documents', icon: FileText },
   { to: '/departments', label: 'Departments', icon: Building2 },
   { to: '/categories', label: 'Categories', icon: Layers },
+  { to: '/tags', label: 'Tags', icon: Hash },
   { to: '/archive', label: 'Archive', icon: Archive },
   { to: '/users', label: 'People', icon: Users, admin: true }
 ]

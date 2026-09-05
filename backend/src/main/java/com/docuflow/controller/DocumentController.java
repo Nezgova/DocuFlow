@@ -33,8 +33,8 @@ public class DocumentController {
  }
 
  @GetMapping
- public Page<DocumentResponse> list(@AuthenticationPrincipal User u, @RequestParam(defaultValue = "") String q, @RequestParam(required = false) Long departmentId, @RequestParam(required = false) Long categoryId, @PageableDefault(size = 20) Pageable p) {
-  return s.list(u, q, departmentId, categoryId, p);
+ public Page<DocumentResponse> list(@AuthenticationPrincipal User u, @RequestParam(defaultValue = "") String q, @RequestParam(required = false) Long departmentId, @RequestParam(required = false) Long categoryId, @RequestParam(required = false) Long tagId, @PageableDefault(size = 20) Pageable p) {
+  return s.list(u, q, departmentId, categoryId, tagId, p);
  }
 
  @GetMapping("/{id}")

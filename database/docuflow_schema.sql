@@ -24,6 +24,23 @@ CREATE TABLE IF NOT EXISTS categories (
   CONSTRAINT uk_categories_name UNIQUE (name)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS tags (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  CONSTRAINT uk_tags_name UNIQUE (name)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS document_tags (
+  document_id BIGINT NOT NULL,
+  tag_id BIGINT NOT NULL,
+  PRIMARY KEY (document_id, tag_id),
+  KEY idx_document_tags_tag (tag_id),
+  CONSTRAINT fk_document_tags_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
+  CONSTRAINT fk_document_tags_tag FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT NOT NULL AUTO_INCREMENT,
   full_name VARCHAR(120) NOT NULL,

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import api from '../services/api'
 
 export default function UploadDocumentDialog({ onClose, onUploaded }) {
-  const [title, setTitle] = useState(''), [file, setFile] = useState(null), [users, setUsers] = useState([]), [categories, setCategories] = useState([]), [categoryId, setCategoryId] = useState(''), [reviewerIds, setReviewerIds] = useState([]), [error, setError] = useState(''), [busy, setBusy] = useState(false)
+  const [title, setTitle] = useState(''), [file, setFile] = useState(null), [users, setUsers] = useState([]), [categories, setCategories] = useState([]), [categoryId, setCategoryId] = useState(''), [tagsInput, setTagsInput] = useState(''), [reviewerIds, setReviewerIds] = useState([]), [error, setError] = useState(''), [busy, setBusy] = useState(false)
   useEffect(() => {
     Promise.all([
       api.get('/users'),
@@ -23,7 +23,8 @@ export default function UploadDocumentDialog({ onClose, onUploaded }) {
     try {
       const body = new FormData()
       body.append('file', file)
-      const data = { title, reviewerIds }
+      const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(Boolean) : []
+      const data = { title, reviewerIds, tags }
       if (categoryId) data.categoryId = Number(categoryId)
       body.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }))
       await api.post('/documents', body)
@@ -51,6 +52,7 @@ export default function UploadDocumentDialog({ onClose, onUploaded }) {
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
+        <label className="mt-4 block text-sm font-bold">Tags (comma-separated)<input value={tagsInput} onChange={(event) => setTagsInput(event.target.value)} className="field mt-2" placeholder="e.g. urgent, confidential, finance" /></label>
         <label className="mt-4 block text-sm font-bold">PDF document<input required accept="application/pdf" type="file" onChange={(event) => setFile(event.target.files?.[0] || null)} className="field mt-2 cursor-pointer" /></label>
         <fieldset className="mt-5"><legend className="text-sm font-bold">Assign reviewers</legend><p className="mt-1 text-xs text-ink/55">Everyone selected must approve before signing.</p><div className="mt-3 max-h-40 space-y-2 overflow-y-auto rounded-xl border border-ink/10 p-2">{users.length ? users.map((user) => <label key={user.id} className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-sand"><input checked={reviewerIds.includes(user.id)} onChange={() => toggle(user.id)} type="checkbox" className="h-4 w-4 accent-moss"/><span className="flex-1 text-sm font-semibold">{user.fullName}<span className="ml-2 text-xs font-normal text-ink/50">{user.role.toLowerCase()}</span></span></label>) : <p className="p-2 text-sm text-ink/55">No other active users exist yet. Create a manager or employee first.</p>}</div></fieldset>
         {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{error}</p>}
