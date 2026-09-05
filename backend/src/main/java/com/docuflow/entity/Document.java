@@ -2,6 +2,7 @@ package com.docuflow.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 
 @Entity @Table(name="documents")
@@ -13,6 +14,8 @@ public class Document {
  @Column(nullable=false) private String originalFileName;
  @Column(nullable=false) private long fileSize;
  @Enumerated(EnumType.STRING) @Column(nullable=false,length=30) private DocumentStatus status=DocumentStatus.DRAFT;
+ @Column(nullable=false,length=20) private String priority="NORMAL";
+ @Column(name="due_date") private LocalDate dueDate;
  @ManyToOne(optional=false,fetch=FetchType.LAZY) private User owner;
  @ManyToOne(fetch=FetchType.LAZY) private Department department;
  @ManyToOne(fetch=FetchType.LAZY) private Category category;
@@ -45,8 +48,12 @@ public class Document {
  public String getStoredFileName(){return storedFileName;}
  public String getOriginalFileName(){return originalFileName;}
  public long getFileSize(){return fileSize;}
- public DocumentStatus getStatus(){return status;}
- public User getOwner(){return owner;}
+  public DocumentStatus getStatus(){return status;}
+  public String getPriority(){return priority;}
+  public void setPriority(String priority){this.priority = priority != null ? priority : "NORMAL"; touch();}
+  public LocalDate getDueDate(){return dueDate;}
+  public void setDueDate(LocalDate dueDate){this.dueDate = dueDate; touch();}
+  public User getOwner(){return owner;}
  public Department getDepartment(){return department;}
   public Category getCategory(){return category;}
   public void setCategory(Category category){this.category=category; touch();}

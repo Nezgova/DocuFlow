@@ -63,6 +63,15 @@ export default function DocumentDetailPage() {
               {signed ? <CheckCircle2 size={13} /> : ready ? <PenLine size={13} /> : <Clock size={13} />}
               {doc.status.replaceAll('_', ' ')}
             </span>
+            {doc.priority && doc.priority !== 'NORMAL' && (
+              <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${
+                doc.priority === 'URGENT' ? 'bg-red-100 text-red-700' :
+                doc.priority === 'HIGH' ? 'bg-amber-100 text-amber-700' :
+                'bg-slate-100 text-slate-600'
+              }`}>
+                {doc.priority}
+              </span>
+            )}
             {doc.categoryName && (
               <span className="rounded-md bg-sand px-2 py-0.5 text-xs font-bold text-ink/70">
                 {doc.categoryName}
@@ -74,6 +83,11 @@ export default function DocumentDetailPage() {
                 {tagName}
               </span>
             ))}
+            {doc.dueDate && (
+              <span className="rounded-md bg-sand px-2 py-0.5 text-xs font-bold text-ink/70">
+                Due: {doc.dueDate}
+              </span>
+            )}
              <span className="text-xs text-ink/50">· {doc.originalFileName} {doc.departmentName ? `· ${doc.departmentName}` : ''}</span>
           </div>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{doc.title}</h1>

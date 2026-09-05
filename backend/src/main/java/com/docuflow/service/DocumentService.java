@@ -45,9 +45,13 @@ public class DocumentService {
   }
   try {
    Files.createDirectories(storage);
-   String stored = UUID.randomUUID() + ".pdf";
-   Files.copy(file.getInputStream(), storage.resolve(stored));
-   var doc = new Document(req.title().trim(), req.description(), stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize(), owner);
+    String stored = UUID.randomUUID() + ".pdf";
+    Files.copy(file.getInputStream(), storage.resolve(stored));
+    var doc = new Document(req.title().trim(), req.description(), stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize(), owner);
+    if (req.priority() != null && !req.priority().isBlank()) {
+     doc.setPriority(req.priority());
+    }
+    doc.setDueDate(req.dueDate());
    
    if (req.categoryId() != null) {
     Category cat = categories.findById(req.categoryId()).orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Category not found"));
@@ -168,8 +172,12 @@ public class DocumentService {
    String stored = UUID.randomUUID() + ".pdf";
    Files.copy(file.getInputStream(), storage.resolve(stored));
    Files.deleteIfExists(storage.resolve(doc.getStoredFileName()));
-   doc.replaceFile(stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize());
-   doc.rename(request.title().trim());
+    doc.replaceFile(stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize());
+    doc.rename(request.title().trim());
+    if (request.priority() != null && !request.priority().isBlank()) {
+     doc.setPriority(request.priority());
+    }
+    doc.setDueDate(request.dueDate());
    
    if (request.categoryId() != null) {
     Category cat = categories.findById(request.categoryId()).orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Category not found"));
@@ -259,16 +267,18 @@ public class DocumentService {
   activity.save(new ActivityLog(d, u, action, detail));
  }
 
- private DocumentResponse map(Document d) {
-  return new DocumentResponse(
-   d.getId(),
-   d.getTitle(),
-   d.getDescription(),
-   d.getOriginalFileName(),
-   d.getFileSize(),
-   d.getStatus(),
-   d.getOwner().getFullName(),
-   d.getOwner().getId(),
+  private DocumentResponse map(Document d) {
+   return new DocumentResponse(
+    d.getId(),
+    d.getTitle(),
+    d.getDescription(),
+    d.getOriginalFileName(),
+    d.getFileSize(),
+    d.getStatus(),
+    d.getPriority(),
+    d.getDueDate(),
+    d.getOwner().getFullName(),
+    d.getOwner().getId(),
    d.getDepartment() != null ? d.getDepartment().getId() : null,
    d.getDepartment() != null ? d.getDepartment().getName() : null,
    d.getCategory() != null ? d.getCategory().getId() : null,
