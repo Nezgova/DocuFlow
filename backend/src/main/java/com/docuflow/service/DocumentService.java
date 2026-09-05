@@ -23,16 +23,18 @@ public class DocumentService {
  private final ActivityLogRepository activity;
  private final CategoryRepository categories;
  private final TagRepository tagRepository;
+ private final NotificationService notificationService;
  private final PdfGeneratorService pdfGenerator;
  private final Path storage;
 
- public DocumentService(DocumentRepository docs, UserRepository users, CommentRepository comments, ActivityLogRepository activity, CategoryRepository categories, TagRepository tagRepository, PdfGeneratorService pdfGenerator, @Value("${app.storage-dir}") String storage) {
+ public DocumentService(DocumentRepository docs, UserRepository users, CommentRepository comments, ActivityLogRepository activity, CategoryRepository categories, TagRepository tagRepository, NotificationService notificationService, PdfGeneratorService pdfGenerator, @Value("${app.storage-dir}") String storage) {
   this.docs = docs;
   this.users = users;
   this.comments = comments;
   this.activity = activity;
   this.categories = categories;
   this.tagRepository = tagRepository;
+  this.notificationService = notificationService;
   this.pdfGenerator = pdfGenerator;
   this.storage = Paths.get(storage).toAbsolutePath().normalize();
  }
@@ -71,6 +73,7 @@ public class DocumentService {
    doc.setReviewers(reviewers);
    docs.save(doc);
    log(doc, owner, "DOCUMENT_UPLOADED", "Pending approval");
+   reviewers.forEach(r -> notificationService.notifyUser(r, "Document Review Assigned", owner.getFullName() + " assigned you to review '" + doc.getTitle() + "'", "ASSIGNED"));
    return map(doc);
   } catch (IOException e) {
    throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store document");
@@ -99,7 +102,9 @@ public class DocumentService {
   } else if (doc.getApprovals().stream().allMatch(a -> a.getDecision() == ApprovalDecision.APPROVED)) {
    doc.setStatus(DocumentStatus.READY_FOR_SIGNATURE);
   }
+  String decisionText = req.decision() == ApprovalDecision.APPROVED ? "approved" : "rejected";
   log(doc, user, req.decision() == ApprovalDecision.APPROVED ? "APPROVED" : "REJECTED", "Document review decision recorded");
+  notificationService.notifyUser(doc.getOwner(), "Review " + decisionText, user.getFullName() + " " + decisionText + " document '" + doc.getTitle() + "'", req.decision() == ApprovalDecision.APPROVED ? "APPROVED" : "REJECTED");
   return map(doc);
  }
 
@@ -120,6 +125,7 @@ public class DocumentService {
   }
   doc.setStatus(DocumentStatus.SIGNED);
   log(doc, user, "DOCUMENT_FINALIZED", "Workflow completed and digitally signed certificate generated");
+  notificationService.notifyUser(doc.getOwner(), "Document Signed", "Your document '" + doc.getTitle() + "' has been successfully finalized and signed.", "SIGNED");
   return map(doc);
  }
 
@@ -190,6 +196,7 @@ public class DocumentService {
    }
    doc.setReviewers(reviewers);
    log(doc, user, "DOCUMENT_MODIFIED", "Document version updated before review");
+   reviewers.forEach(r -> notificationService.notifyUser(r, "Document Review Assigned", user.getFullName() + " assigned you to review '" + doc.getTitle() + "'", "ASSIGNED"));
    return map(doc);
   } catch (IOException e) {
    throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to replace PDF");
@@ -200,6 +207,9 @@ public class DocumentService {
   var doc = access(id, user);
   var comment = comments.save(new Comment(doc, user, req.content().trim()));
   log(doc, user, "COMMENT_ADDED", "Comment added");
+  if (!doc.getOwner().getId().equals(user.getId())) {
+   notificationService.notifyUser(doc.getOwner(), "New Comment", user.getFullName() + " commented on '" + doc.getTitle() + "'", "COMMENT");
+  }
   return new CommentResponse(user.getFullName(), comment.getContent(), comment.getCreatedAt());
  }
 

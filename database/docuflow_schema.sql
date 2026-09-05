@@ -116,8 +116,22 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   PRIMARY KEY (id),
   KEY idx_activity_logs_document_created (document_id, created_at),
   KEY idx_activity_logs_actor (actor_id),
-  CONSTRAINT fk_activity_logs_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
-  CONSTRAINT fk_activity_logs_actor FOREIGN KEY (actor_id) REFERENCES users(id)
+   CONSTRAINT fk_activity_logs_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
+   CONSTRAINT fk_activity_logs_actor FOREIGN KEY (actor_id) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  title VARCHAR(180) NOT NULL,
+  message VARCHAR(500) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  KEY idx_notifications_user_read (user_id, is_read),
+  KEY idx_notifications_created (created_at),
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Seed default departments if not present
