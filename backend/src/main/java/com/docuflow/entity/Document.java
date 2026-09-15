@@ -16,6 +16,7 @@ public class Document {
  @Enumerated(EnumType.STRING) @Column(nullable=false,length=30) private DocumentStatus status=DocumentStatus.DRAFT;
  @Column(nullable=false,length=20) private String priority="NORMAL";
  @Column(name="due_date") private LocalDate dueDate;
+ @Column(name="current_version",nullable=false) private Integer currentVersion=1;
  @ManyToOne(optional=false,fetch=FetchType.LAZY) private User owner;
  @ManyToOne(fetch=FetchType.LAZY) private Department department;
  @ManyToOne(fetch=FetchType.LAZY) private Category category;
@@ -29,6 +30,7 @@ public class Document {
  @Column(nullable=false,updatable=false) private Instant createdAt=Instant.now();
  @Column(nullable=false) private Instant updatedAt=Instant.now();
  @OneToMany(mappedBy="document",cascade=CascadeType.ALL,orphanRemoval=true) private List<Approval> approvals=new ArrayList<>();
+ @OneToMany(mappedBy="document",cascade=CascadeType.ALL,orphanRemoval=true) @OrderBy("versionNumber DESC") private List<DocumentVersion> versions=new ArrayList<>();
 
  protected Document(){}
 
@@ -62,6 +64,10 @@ public class Document {
  public Instant getCreatedAt(){return createdAt;}
  public Instant getUpdatedAt(){return updatedAt;}
  public List<Approval> getApprovals(){return approvals;}
+  public Integer getCurrentVersion(){return currentVersion != null ? currentVersion : 1;}
+  public void setCurrentVersion(Integer currentVersion){this.currentVersion = currentVersion; touch();}
+  public List<DocumentVersion> getVersions(){return versions;}
+  public void addVersion(DocumentVersion version){versions.add(version); this.currentVersion = version.getVersionNumber(); touch();}
 
  public void setReviewers(List<User> reviewers){
    approvals.clear();

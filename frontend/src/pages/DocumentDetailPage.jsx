@@ -3,25 +3,30 @@ import { Link, useParams } from 'react-router-dom'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import RestartDocumentDialog from '../components/RestartDocumentDialog'
+import UploadNewVersionDialog from '../components/UploadNewVersionDialog'
 import SignDocumentDialog from '../components/SignDocumentDialog'
-import { FileText, CheckCircle2, PenLine, ShieldCheck, Clock, Hash } from 'lucide-react'
+import { FileText, CheckCircle2, PenLine, ShieldCheck, Clock, Hash, History } from 'lucide-react'
 
 export default function DocumentDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
   const [doc, setDoc] = useState()
   const [comments, setComments] = useState([])
+  const [versions, setVersions] = useState([])
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const [restarting, setRestarting] = useState(false)
+  const [uploadingVersion, setUploadingVersion] = useState(false)
   const [signing, setSigning] = useState(false)
 
   const load = () => Promise.all([
     api.get(`/documents/${id}`),
-    api.get(`/documents/${id}/comments`)
-  ]).then(([d, c]) => {
+    api.get(`/documents/${id}/comments`),
+    api.get(`/documents/${id}/versions`)
+  ]).then(([d, c, v]) => {
     setDoc(d.data)
     setComments(c.data)
+    setVersions(v.data)
   }).catch(e => setError(e.response?.data?.message || 'Unable to load document'))
 
   useEffect(() => { load() }, [id])
@@ -43,6 +48,22 @@ export default function DocumentDetailPage() {
       })
   }
 
+  const viewVersion = (ver) => {
+    const tab = window.open('', '_blank')
+    if (!tab) {
+      setError('Allow pop-ups to view PDFs.')
+      return
+    }
+    tab.document.write('Loading PDF version…')
+    const url = ver.id ? `/documents/${id}/versions/${ver.id}/file` : `/documents/${id}/file`
+    api.get(url, { responseType: 'blob' })
+      .then(r => tab.location.replace(URL.createObjectURL(r.data)))
+      .catch(() => {
+        tab.close()
+        setError('Unable to open version PDF')
+      })
+  }
+
   if (!doc) return <p className="p-10 text-center text-ink/60">{error || 'Loading document...'}</p>
 
   const review = doc.reviewers.find(r => r.id === user.id)
@@ -50,6 +71,7 @@ export default function DocumentDetailPage() {
   const signed = doc.status === 'SIGNED' || doc.status === 'ARCHIVED'
   const hasDecisions = doc.reviewers.some(r => r.decision !== 'PENDING')
   const canChange = (doc.ownerId === user.id || user.role === 'ADMINISTRATOR') && !hasDecisions && doc.status === 'PENDING'
+  const canUploadNewVersion = (doc.ownerId === user.id || user.role === 'ADMINISTRATOR') && !signed
   const isManagerOrAdmin = user.role === 'MANAGER' || user.role === 'ADMINISTRATOR'
 
   return (
@@ -62,6 +84,9 @@ export default function DocumentDetailPage() {
             <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${signed ? 'bg-moss text-white' : ready ? 'bg-mint text-moss' : 'bg-sand text-ink/70'}`}>
               {signed ? <CheckCircle2 size={13} /> : ready ? <PenLine size={13} /> : <Clock size={13} />}
               {doc.status.replaceAll('_', ' ')}
+            </span>
+            <span className="rounded-md bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs font-black tracking-wide">
+              v{doc.currentVersion || 1}
             </span>
             {doc.priority && doc.priority !== 'NORMAL' && (
               <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${
@@ -88,7 +113,7 @@ export default function DocumentDetailPage() {
                 Due: {doc.dueDate}
               </span>
             )}
-             <span className="text-xs text-ink/50">· {doc.originalFileName} {doc.departmentName ? `· ${doc.departmentName}` : ''}</span>
+            <span className="text-xs text-ink/50">· {doc.originalFileName} {doc.departmentName ? `· ${doc.departmentName}` : ''}</span>
           </div>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{doc.title}</h1>
           {doc.description && <p className="mt-1 text-sm text-ink/65">{doc.description}</p>}
@@ -102,6 +127,16 @@ export default function DocumentDetailPage() {
             <FileText size={17} />
             View PDF {signed && '(Signed & Certified)'}
           </button>
+
+          {canUploadNewVersion && (
+            <button
+              onClick={() => setUploadingVersion(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-white px-4 py-3 text-sm font-bold hover:bg-sand"
+            >
+              <History size={17} />
+              Upload New Version
+            </button>
+          )}
 
           {canChange && (
             <button
@@ -166,7 +201,8 @@ export default function DocumentDetailPage() {
         </div>
       )}
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        {/* Card 1: Reviewers */}
         <section className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-extrabold">Reviewers</h2>
           <p className="mt-1 text-xs text-ink/55">All reviewers must approve before final signing.</p>
@@ -188,9 +224,82 @@ export default function DocumentDetailPage() {
           </div>
         </section>
 
+        {/* Card 2: Version History */}
+        <section className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-extrabold flex items-center gap-2">
+                <History size={18} className="text-moss" />
+                Version History
+              </h2>
+              <p className="mt-1 text-xs text-ink/55">Revisions & historical drafts</p>
+            </div>
+            {canUploadNewVersion && (
+              <button
+                onClick={() => setUploadingVersion(true)}
+                className="rounded-lg bg-sand px-2.5 py-1 text-xs font-bold text-ink/75 hover:bg-mint hover:text-moss"
+              >
+                + New v{(doc.currentVersion || 1) + 1}
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 flex-1 space-y-3 max-h-72 overflow-y-auto pr-1">
+            {versions.length === 0 ? (
+              <p className="text-sm text-ink/50">No previous versions recorded.</p>
+            ) : (
+              versions.map((ver) => {
+                const isCurrent = ver.versionNumber === (doc.currentVersion || 1)
+                return (
+                  <div
+                    key={ver.id || ver.versionNumber}
+                    className={`rounded-xl p-3 text-sm transition-all border ${
+                      isCurrent
+                        ? 'bg-mint/20 border-moss/20'
+                        : 'bg-sand/60 border-transparent hover:bg-sand'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded px-1.5 py-0.5 text-xs font-black ${
+                          isCurrent ? 'bg-moss text-white' : 'bg-ink/10 text-ink/80'
+                        }`}>
+                          v{ver.versionNumber}
+                        </span>
+                        {isCurrent && (
+                          <span className="text-[11px] font-bold text-moss">Current</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => viewVersion(ver)}
+                        title="View PDF of this version"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-moss hover:underline"
+                      >
+                        <FileText size={13} />
+                        View PDF
+                      </button>
+                    </div>
+
+                    <p className="mt-1.5 text-xs text-ink/85 font-medium">
+                      {ver.changeNotes || 'No change description'}
+                    </p>
+
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-ink/50">
+                      <span>{ver.uploadedByName}</span>
+                      <span>{(ver.fileSize / 1024).toFixed(0)} KB · {new Date(ver.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </section>
+
+        {/* Card 3: Activity & Comments */}
         <section className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm flex flex-col">
           <h2 className="text-lg font-extrabold">Activity & Comments</h2>
-          <div className="mt-4 flex-1 space-y-3 max-h-60 overflow-y-auto pr-2">
+          <p className="mt-1 text-xs text-ink/55">Communication and audit notes</p>
+          <div className="mt-4 flex-1 space-y-3 max-h-56 overflow-y-auto pr-2">
             {comments.length === 0 ? (
               <p className="text-sm text-ink/50">No comments yet.</p>
             ) : (
@@ -221,6 +330,14 @@ export default function DocumentDetailPage() {
           </form>
         </section>
       </div>
+
+      {uploadingVersion && (
+        <UploadNewVersionDialog
+          document={doc}
+          onClose={() => setUploadingVersion(false)}
+          onUploaded={() => { setUploadingVersion(false); load() }}
+        />
+      )}
 
       {restarting && (
         <RestartDocumentDialog

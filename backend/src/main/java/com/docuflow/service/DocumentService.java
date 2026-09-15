@@ -25,9 +25,10 @@ public class DocumentService {
  private final TagRepository tagRepository;
  private final NotificationService notificationService;
  private final PdfGeneratorService pdfGenerator;
+ private final DocumentVersionRepository documentVersionRepository;
  private final Path storage;
 
- public DocumentService(DocumentRepository docs, UserRepository users, CommentRepository comments, ActivityLogRepository activity, CategoryRepository categories, TagRepository tagRepository, NotificationService notificationService, PdfGeneratorService pdfGenerator, @Value("${app.storage-dir}") String storage) {
+ public DocumentService(DocumentRepository docs, UserRepository users, CommentRepository comments, ActivityLogRepository activity, CategoryRepository categories, TagRepository tagRepository, NotificationService notificationService, PdfGeneratorService pdfGenerator, DocumentVersionRepository documentVersionRepository, @Value("${app.storage-dir}") String storage) {
   this.docs = docs;
   this.users = users;
   this.comments = comments;
@@ -36,6 +37,7 @@ public class DocumentService {
   this.tagRepository = tagRepository;
   this.notificationService = notificationService;
   this.pdfGenerator = pdfGenerator;
+  this.documentVersionRepository = documentVersionRepository;
   this.storage = Paths.get(storage).toAbsolutePath().normalize();
  }
 
@@ -76,7 +78,11 @@ public class DocumentService {
    }
    doc.setReviewers(reviewers);
    docs.save(doc);
-   log(doc, owner, "DOCUMENT_UPLOADED", "Pending approval");
+   String notes = (req.changeNotes() != null && !req.changeNotes().isBlank()) ? req.changeNotes().trim() : "Initial version";
+   DocumentVersion v1 = new DocumentVersion(doc, 1, stored, doc.getOriginalFileName(), doc.getFileSize(), owner, notes);
+   doc.addVersion(v1);
+   documentVersionRepository.save(v1);
+   log(doc, owner, "DOCUMENT_UPLOADED", "Initial version v1 uploaded for approval");
    reviewers.forEach(r -> notificationService.notifyUser(r, "Document Review Assigned", owner.getFullName() + " assigned you to review '" + doc.getTitle() + "'", "ASSIGNED"));
    return map(doc);
   } catch (IOException e) {
@@ -171,13 +177,14 @@ public class DocumentService {
   try {
    String stored = UUID.randomUUID() + ".pdf";
    Files.copy(file.getInputStream(), storage.resolve(stored));
-   Files.deleteIfExists(storage.resolve(doc.getStoredFileName()));
-    doc.replaceFile(stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize());
-    doc.rename(request.title().trim());
-    if (request.priority() != null && !request.priority().isBlank()) {
-     doc.setPriority(request.priority());
-    }
-    doc.setDueDate(request.dueDate());
+   int nextVersion = (doc.getCurrentVersion() != null ? doc.getCurrentVersion() : 1) + 1;
+   doc.replaceFile(stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize());
+   doc.setCurrentVersion(nextVersion);
+   doc.rename(request.title().trim());
+   if (request.priority() != null && !request.priority().isBlank()) {
+    doc.setPriority(request.priority());
+   }
+   doc.setDueDate(request.dueDate());
    
    if (request.categoryId() != null) {
     Category cat = categories.findById(request.categoryId()).orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Category not found"));
@@ -203,11 +210,108 @@ public class DocumentService {
     throw new ApiException(HttpStatus.BAD_REQUEST, "One or more reviewers do not exist");
    }
    doc.setReviewers(reviewers);
-   log(doc, user, "DOCUMENT_MODIFIED", "Document version updated before review");
-   reviewers.forEach(r -> notificationService.notifyUser(r, "Document Review Assigned", user.getFullName() + " assigned you to review '" + doc.getTitle() + "'", "ASSIGNED"));
+
+   String notes = (request.changeNotes() != null && !request.changeNotes().isBlank()) ? request.changeNotes().trim() : "Revision v" + nextVersion;
+   DocumentVersion ver = new DocumentVersion(doc, nextVersion, stored, doc.getOriginalFileName(), doc.getFileSize(), user, notes);
+   doc.addVersion(ver);
+   documentVersionRepository.save(ver);
+
+   log(doc, user, "DOCUMENT_MODIFIED", "Document version v" + nextVersion + " updated before review: " + notes);
+   final int vNum = nextVersion;
+   reviewers.forEach(r -> notificationService.notifyUser(r, "Document Review Assigned", user.getFullName() + " assigned you to review '" + doc.getTitle() + "' (v" + vNum + ")", "ASSIGNED"));
    return map(doc);
   } catch (IOException e) {
    throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to replace PDF");
+  }
+ }
+
+ public DocumentResponse uploadNewVersion(Long id, MultipartFile file, String changeNotes, User user) {
+  var doc = access(id, user);
+  if (user.getRole() != Role.ADMINISTRATOR && !doc.getOwner().getId().equals(user.getId())) {
+   throw new ApiException(HttpStatus.FORBIDDEN, "Only the owner or administrator may upload a new version");
+  }
+  if (doc.getStatus() == DocumentStatus.ARCHIVED || doc.getStatus() == DocumentStatus.SIGNED) {
+   throw new ApiException(HttpStatus.CONFLICT, "Cannot upload a new version to a finalized or archived document");
+  }
+  if (file.isEmpty() || !"application/pdf".equals(file.getContentType())) {
+   throw new ApiException(HttpStatus.BAD_REQUEST, "Only PDF files are accepted");
+  }
+  try {
+   Files.createDirectories(storage);
+   String stored = UUID.randomUUID() + ".pdf";
+   Files.copy(file.getInputStream(), storage.resolve(stored));
+   int nextVersion = (doc.getCurrentVersion() != null ? doc.getCurrentVersion() : 1) + 1;
+   doc.replaceFile(stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize());
+   doc.setCurrentVersion(nextVersion);
+
+   String notes = (changeNotes != null && !changeNotes.isBlank()) ? changeNotes.trim() : "Revision v" + nextVersion;
+   DocumentVersion ver = new DocumentVersion(doc, nextVersion, stored, doc.getOriginalFileName(), doc.getFileSize(), user, notes);
+   doc.addVersion(ver);
+   documentVersionRepository.save(ver);
+
+   boolean hadDecisions = false;
+   for (var a : doc.getApprovals()) {
+    if (a.getDecision() != ApprovalDecision.PENDING) {
+     a.decide(ApprovalDecision.PENDING);
+     hadDecisions = true;
+    }
+   }
+   if (doc.getStatus() == DocumentStatus.REJECTED || hadDecisions) {
+    doc.setStatus(DocumentStatus.PENDING);
+   }
+
+   log(doc, user, "VERSION_UPLOADED", "Uploaded version v" + nextVersion + ": " + notes);
+   final int vNum = nextVersion;
+   doc.getApprovals().forEach(r -> notificationService.notifyUser(r.getReviewer(), "New Document Version", user.getFullName() + " uploaded version v" + vNum + " for '" + doc.getTitle() + "'", "ASSIGNED"));
+   return map(doc);
+  } catch (IOException e) {
+   throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store version PDF");
+  }
+ }
+
+ @Transactional(readOnly = true)
+ public List<VersionResponse> versions(Long id, User user) {
+  var doc = access(id, user);
+  var list = documentVersionRepository.findByDocumentIdOrderByVersionNumberDesc(id);
+  if (list.isEmpty()) {
+   return List.of(new VersionResponse(
+     0L,
+     doc.getCurrentVersion() != null ? doc.getCurrentVersion() : 1,
+     doc.getStoredFileName(),
+     doc.getOriginalFileName(),
+     doc.getFileSize(),
+     doc.getOwner().getFullName(),
+     doc.getOwner().getId(),
+     "Initial version",
+     doc.getCreatedAt()
+   ));
+  }
+  return list.stream().map(v -> new VersionResponse(
+    v.getId(),
+    v.getVersionNumber(),
+    v.getStoredFileName(),
+    v.getOriginalFileName(),
+    v.getFileSize(),
+    v.getUploadedBy().getFullName(),
+    v.getUploadedBy().getId(),
+    v.getChangeNotes(),
+    v.getCreatedAt()
+  )).toList();
+ }
+
+ @Transactional(readOnly = true)
+ public org.springframework.core.io.Resource versionFile(Long id, Long versionId, User user) {
+  access(id, user);
+  var ver = documentVersionRepository.findByDocumentIdAndId(id, versionId)
+    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Document version not found"));
+  try {
+   Path p = storage.resolve(ver.getStoredFileName());
+   if (!Files.exists(p)) {
+    throw new ApiException(HttpStatus.NOT_FOUND, "Version file does not exist on storage");
+   }
+   return new org.springframework.core.io.UrlResource(p.toUri());
+  } catch (java.net.MalformedURLException e) {
+   throw new ApiException(HttpStatus.NOT_FOUND, "File not found");
   }
  }
 
@@ -232,9 +336,13 @@ public class DocumentService {
   if (user.getRole() != Role.ADMINISTRATOR && !doc.getOwner().getId().equals(user.getId())) {
    throw new ApiException(HttpStatus.FORBIDDEN, "Only the owner or administrator may delete");
   }
+  var allVersions = documentVersionRepository.findByDocumentIdOrderByVersionNumberDesc(id);
   docs.delete(doc);
   try {
    Files.deleteIfExists(storage.resolve(doc.getStoredFileName()));
+   for (var v : allVersions) {
+    Files.deleteIfExists(storage.resolve(v.getStoredFileName()));
+   }
   } catch (IOException ignored) {}
  }
 
@@ -267,18 +375,19 @@ public class DocumentService {
   activity.save(new ActivityLog(d, u, action, detail));
  }
 
-  private DocumentResponse map(Document d) {
-   return new DocumentResponse(
-    d.getId(),
-    d.getTitle(),
-    d.getDescription(),
-    d.getOriginalFileName(),
-    d.getFileSize(),
-    d.getStatus(),
-    d.getPriority(),
-    d.getDueDate(),
-    d.getOwner().getFullName(),
-    d.getOwner().getId(),
+ private DocumentResponse map(Document d) {
+  return new DocumentResponse(
+   d.getId(),
+   d.getTitle(),
+   d.getDescription(),
+   d.getOriginalFileName(),
+   d.getFileSize(),
+   d.getStatus(),
+   d.getPriority(),
+   d.getDueDate(),
+   d.getCurrentVersion(),
+   d.getOwner().getFullName(),
+   d.getOwner().getId(),
    d.getDepartment() != null ? d.getDepartment().getId() : null,
    d.getDepartment() != null ? d.getDepartment().getName() : null,
    d.getCategory() != null ? d.getCategory().getId() : null,

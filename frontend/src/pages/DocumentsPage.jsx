@@ -112,6 +112,9 @@ export default function DocumentsPage(){
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-bold">{d.title}</p>
+                  <span className="rounded bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 text-[11px] font-black">
+                    v{d.currentVersion || 1}
+                  </span>
                   {priorityBadge(d.priority)}
                   {d.categoryName && (
                     <span className="rounded-md bg-sand px-2 py-0.5 text-xs font-bold text-ink/70">

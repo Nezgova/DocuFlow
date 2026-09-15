@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS documents (
   status ENUM('DRAFT', 'PENDING', 'APPROVED', 'REJECTED', 'READY_FOR_SIGNATURE', 'SIGNED', 'ARCHIVED') NOT NULL DEFAULT 'DRAFT',
   priority VARCHAR(20) NOT NULL DEFAULT 'NORMAL',
   due_date DATE NULL,
+  current_version INT NOT NULL DEFAULT 1,
   owner_id BIGINT NOT NULL,
   department_id BIGINT NULL,
   category_id BIGINT NULL,
@@ -82,6 +83,23 @@ CREATE TABLE IF NOT EXISTS documents (
   CONSTRAINT fk_documents_owner FOREIGN KEY (owner_id) REFERENCES users(id),
   CONSTRAINT fk_documents_department FOREIGN KEY (department_id) REFERENCES departments(id),
   CONSTRAINT fk_documents_category FOREIGN KEY (category_id) REFERENCES categories(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS document_versions (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  document_id BIGINT NOT NULL,
+  version_number INT NOT NULL,
+  stored_file_name VARCHAR(255) NOT NULL,
+  original_file_name VARCHAR(255) NOT NULL,
+  file_size BIGINT NOT NULL,
+  uploaded_by_id BIGINT NOT NULL,
+  change_notes VARCHAR(1000) NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  KEY idx_document_versions_doc (document_id),
+  KEY idx_document_versions_uploaded_by (uploaded_by_id),
+  CONSTRAINT fk_document_versions_document FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
+  CONSTRAINT fk_document_versions_uploaded_by FOREIGN KEY (uploaded_by_id) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS approvals (

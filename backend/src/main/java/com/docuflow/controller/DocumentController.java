@@ -47,6 +47,25 @@ public class DocumentController {
   return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(s.file(id, u));
  }
 
+ @GetMapping("/{id}/versions")
+ public List<VersionResponse> versions(@PathVariable Long id, @AuthenticationPrincipal User u) {
+  return s.versions(id, u);
+ }
+
+ @GetMapping("/{id}/versions/{versionId}/file")
+ public ResponseEntity<org.springframework.core.io.Resource> versionFile(@PathVariable Long id, @PathVariable Long versionId, @AuthenticationPrincipal User u) {
+  return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(s.versionFile(id, versionId, u));
+ }
+
+ @PostMapping(value = "/{id}/versions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+ public DocumentResponse uploadNewVersion(
+   @PathVariable Long id,
+   @RequestPart("file") MultipartFile file,
+   @RequestPart(value = "changeNotes", required = false) String changeNotes,
+   @AuthenticationPrincipal User u) {
+  return s.uploadNewVersion(id, file, changeNotes, u);
+ }
+
  @PatchMapping("/{id}/decision")
  public DocumentResponse decide(@PathVariable Long id, @RequestBody @Valid DecisionRequest d, @AuthenticationPrincipal User u) {
   return s.decide(id, d, u);
