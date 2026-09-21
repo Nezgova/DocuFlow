@@ -1,4 +1,4 @@
-import { Archive, Building2, FileText, Hash, Layers, LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react'
+import { Archive, Building2, FileText, Hash, Layers, LayoutDashboard, LogOut, Menu, Users, X, BookOpen } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
@@ -11,7 +11,8 @@ const links = [
   { to: '/categories', label: 'Categories', icon: Layers },
   { to: '/tags', label: 'Tags', icon: Hash },
   { to: '/archive', label: 'Archive', icon: Archive },
-  { to: '/users', label: 'People', icon: Users, admin: true }
+  { to: '/users', label: 'People', icon: Users, admin: true },
+  { to: '/guide', label: 'User Guide', icon: BookOpen }
 ]
 export default function AppLayout() { const [open, setOpen] = useState(false); const { user, logout } = useAuth(); const allowed = links.filter((link) => !link.admin || user?.role === 'ADMINISTRATOR')
  const sidebar = <aside className="flex h-full w-72 flex-col border-r border-ink/10 bg-sand p-5"><Logo /><nav className="mt-10 space-y-1">{allowed.map(({ to, label, icon: Icon }) => <NavLink end={to === '/'} onClick={() => setOpen(false)} key={to} to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><Icon size={18} />{label}</NavLink>)}</nav><div className="mt-auto rounded-2xl bg-ink p-4 text-white"><p className="text-sm font-bold">{user?.fullName}</p><p className="mt-1 text-xs text-white/60">{user?.role?.toLowerCase()}{user?.departmentName ? ` · ${user.departmentName}` : ''}</p><button onClick={logout} className="mt-4 flex items-center gap-2 text-xs font-bold text-white/80 hover:text-white"><LogOut size={15} />Sign out</button></div></aside>
