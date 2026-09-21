@@ -1,4 +1,4 @@
-import { FileText, Hash, Search, Upload } from 'lucide-react'
+import { FileText, Hash, Search, Upload, BookmarkPlus, Trash2, Bookmark } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
@@ -9,12 +9,14 @@ export default function DocumentsPage(){
   const [departments, setDepartments] = useState([])
   const [categories, setCategories] = useState([])
   const [tags, setTags] = useState([])
+  const [savedFilters, setSavedFilters] = useState([])
   const [search, setSearch] = useState('')
   const [departmentId, setDepartmentId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [tagId, setTagId] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
   const [upload, setUpload] = useState(false)
+  const [success, setSuccess] = useState('')
 
   const load = () => {
     const params = {}
@@ -25,13 +27,52 @@ export default function DocumentsPage(){
     api.get('/documents', { params }).then(r => setDocs(r.data.content))
   }
 
+  const loadSavedFilters = () => {
+    api.get('/saved-filters').then(r => setSavedFilters(r.data)).catch(() => {})
+  }
+
   useEffect(() => {
     api.get('/departments').then(r => setDepartments(r.data)).catch(() => {})
     api.get('/categories').then(r => setCategories(r.data)).catch(() => {})
     api.get('/tags').then(r => setTags(r.data)).catch(() => {})
+    loadSavedFilters()
   }, [])
 
   useEffect(() => { load() }, [search, departmentId, categoryId, tagId])
+
+  const handleSaveFilter = () => {
+    const name = prompt('Enter a name for this saved filter:')
+    if (!name || !name.trim()) return
+    const filterData = JSON.stringify({ search, departmentId, categoryId, tagId, priorityFilter })
+    api.post('/saved-filters', { name: name.trim(), filterJson: filterData })
+      .then(() => {
+        setSuccess('Filter saved successfully')
+        loadSavedFilters()
+        setTimeout(() => setSuccess(''), 3000)
+      })
+      .catch(() => alert('Failed to save filter'))
+  }
+
+  const handleApplyFilter = (f) => {
+    try {
+      const data = JSON.parse(f.filterJson)
+      setSearch(data.search || '')
+      setDepartmentId(data.departmentId || '')
+      setCategoryId(data.categoryId || '')
+      setTagId(data.tagId || '')
+      setPriorityFilter(data.priorityFilter || '')
+    } catch {
+      alert('Invalid filter data')
+    }
+  }
+
+  const handleDeleteFilter = (id, e) => {
+    e.stopPropagation()
+    if (!confirm('Delete this saved filter?')) return
+    api.delete(`/saved-filters/${id}`)
+      .then(() => loadSavedFilters())
+      .catch(() => alert('Failed to delete filter'))
+  }
 
   const filteredDocs = docs.filter(d => {
     if (priorityFilter && d.priority !== priorityFilter) return false
@@ -51,12 +92,36 @@ export default function DocumentsPage(){
           <p className="font-mono text-xs uppercase tracking-[.14em] text-moss">Document workspace</p>
           <h1 className="mt-2 text-3xl font-extrabold">Documents</h1>
         </div>
-        <button onClick={()=>setUpload(true)} className="flex items-center gap-2 rounded-xl bg-moss px-4 py-3 text-sm font-bold text-white hover:bg-ink">
-          <Upload size={17}/>Upload PDF
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={handleSaveFilter} className="flex items-center gap-2 rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm font-bold text-ink hover:bg-sand">
+            <BookmarkPlus size={17} className="text-moss"/>Save current filter
+          </button>
+          <button onClick={()=>setUpload(true)} className="flex items-center gap-2 rounded-xl bg-moss px-4 py-3 text-sm font-bold text-white hover:bg-ink">
+            <Upload size={17}/>Upload PDF
+          </button>
+        </div>
       </div>
 
-      <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center">
+      {success && <p className="mt-4 rounded-xl bg-mint/40 px-4 py-3 text-sm text-moss font-bold">{success}</p>}
+
+      {savedFilters.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-ink/50">Saved filters:</span>
+          {savedFilters.map(f => (
+            <button 
+              key={f.id} 
+              onClick={() => handleApplyFilter(f)} 
+              className="inline-flex items-center gap-1.5 rounded-full bg-sand px-3 py-1 text-xs font-bold text-ink hover:bg-mint/50 transition"
+            >
+              <Bookmark size={12} className="text-moss" />
+              {f.name}
+              <span onClick={(e) => handleDeleteFilter(f.id, e)} className="ml-1 text-ink/40 hover:text-red-600">×</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-lg">
           <Search className="absolute left-3 top-3.5 text-ink/35" size={18}/>
           <input className="field pl-10 w-full" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents…"/>
@@ -140,7 +205,7 @@ export default function DocumentsPage(){
               </span>
             </Link>
           )
-        }) : <p className="p-10 text-center text-sm text-ink/55">No documents yet.</p>}
+        }) : <p className="p-10 text-center text-sm text-ink/55">No documents found matching your criteria.</p>}
       </div>
 
       {upload && <UploadDocumentDialog onClose={()=>setUpload(false)} onUploaded={()=>{setUpload(false);load()}}/>}
