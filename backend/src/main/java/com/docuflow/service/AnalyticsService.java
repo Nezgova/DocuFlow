@@ -4,7 +4,6 @@ import com.docuflow.dto.AnalyticsDtos.*;
 import com.docuflow.entity.*;
 import com.docuflow.repository.*;
 import java.time.*;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Pageable;
@@ -16,14 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class AnalyticsService {
   private final DocumentRepository documentRepository;
   private final ApprovalRepository approvalRepository;
-  private final CategoryRepository categoryRepository;
-  private final DepartmentRepository departmentRepository;
 
-  public AnalyticsService(DocumentRepository documentRepository, ApprovalRepository approvalRepository, CategoryRepository categoryRepository, DepartmentRepository departmentRepository) {
+  public AnalyticsService(DocumentRepository documentRepository, ApprovalRepository approvalRepository) {
     this.documentRepository = documentRepository;
     this.approvalRepository = approvalRepository;
-    this.categoryRepository = categoryRepository;
-    this.departmentRepository = departmentRepository;
   }
 
   public DashboardAnalyticsResponse getDashboardAnalytics(User user) {
@@ -36,28 +31,24 @@ public class AnalyticsService {
 
     Instant startOfToday = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant();
     
-    // Signed today or decided today
     long signedToday = allVisible.stream()
         .filter(d -> d.getStatus() == DocumentStatus.SIGNED && d.getUpdatedAt() != null && d.getUpdatedAt().isAfter(startOfToday))
         .count();
 
-    // Status counts
     Map<String, Long> statusCounts = allVisible.stream()
         .collect(Collectors.groupingBy(d -> d.getStatus().name(), Collectors.counting()));
 
-    // Category counts
     Map<String, Long> categoryCounts = allVisible.stream()
         .filter(d -> d.getCategory() != null)
         .collect(Collectors.groupingBy(d -> d.getCategory().getName(), Collectors.counting()));
 
-    // Department counts
     Map<String, Long> departmentCounts = allVisible.stream()
         .filter(d -> d.getDepartment() != null)
         .collect(Collectors.groupingBy(d -> d.getDepartment().getName(), Collectors.counting()));
 
-    // Approval rate and avg hours
-    List<Approval> approvals = allVisible.stream()
-        .flatMap(d -> d.getApprovals().stream())
+    Set<Long> visibleDocIds = allVisible.stream().map(Document::getId).collect(Collectors.toSet());
+    List<Approval> approvals = approvalRepository.findAll().stream()
+        .filter(a -> a.getDocument() != null && visibleDocIds.contains(a.getDocument().getId()))
         .collect(Collectors.toList());
 
     long totalDecided = approvals.stream().filter(a -> a.getDecision() == ApprovalDecision.APPROVED || a.getDecision() == ApprovalDecision.REJECTED).count();
@@ -67,7 +58,7 @@ public class AnalyticsService {
     double totalHours = 0.0;
     long timedApprovals = 0;
     for (Approval a : approvals) {
-      if (a.getDecision() != ApprovalDecision.PENDING && a.getDecidedAt() != null && a.getDocument().getCreatedAt() != null) {
+      if (a.getDecision() != ApprovalDecision.PENDING && a.getDecidedAt() != null && a.getDocument() != null && a.getDocument().getCreatedAt() != null) {
         long minutes = Duration.between(a.getDocument().getCreatedAt(), a.getDecidedAt()).toMinutes();
         totalHours += minutes / 60.0;
         timedApprovals++;
