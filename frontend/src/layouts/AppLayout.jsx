@@ -1,4 +1,4 @@
-import { Archive, Building2, FileText, Hash, Layers, LayoutDashboard, LogOut, Menu, Users, X, BarChart3 } from 'lucide-react'
+import { Archive, Building2, FileText, Hash, Layers, LayoutDashboard, LogOut, Menu, Users, X } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,7 +7,6 @@ import NotificationsDropdown from '../components/NotificationsDropdown'
 const links = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/documents', label: 'Documents', icon: FileText },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/departments', label: 'Departments', icon: Building2 },
   { to: '/categories', label: 'Categories', icon: Layers },
   { to: '/tags', label: 'Tags', icon: Hash },
