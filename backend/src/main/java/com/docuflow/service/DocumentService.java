@@ -394,7 +394,7 @@ public class DocumentService {
    d.getCategory() != null ? d.getCategory().getName() : null,
    d.getTags().stream().map(Tag::getName).sorted().toList(),
    d.getCreatedAt(),
-   d.getApprovals().stream().map(a -> new Reviewer(a.getReviewer().getId(), a.getReviewer().getFullName(), a.getDecision())).toList()
+    d.getApprovals().stream().map(a -> new Reviewer(a.getReviewer().getId(), a.getReviewer().getFullName(), a.getDecision(), a.getDecidedAt())).toList()
   );
  }
 }

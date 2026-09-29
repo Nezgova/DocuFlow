@@ -202,25 +202,72 @@ export default function DocumentDetailPage() {
       )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        {/* Card 1: Reviewers */}
-        <section className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-extrabold">Reviewers</h2>
-          <p className="mt-1 text-xs text-ink/55">All reviewers must approve before final signing.</p>
-          <div className="mt-4 divide-y divide-ink/10">
-            {doc.reviewers.map(r => (
-              <div key={r.id} className="py-3 flex items-center justify-between text-sm">
-                <div>
-                  <p className="font-bold">{r.name}</p>
-                </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                  r.decision === 'APPROVED' ? 'bg-mint text-moss' :
-                  r.decision === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                  'bg-sand text-ink/60'
-                }`}>
-                  {r.decision}
-                </span>
+        {/* Card 1: Approval Timeline & Reviewers */}
+        <section className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-extrabold flex items-center gap-2">
+              <Clock size={18} className="text-moss" />
+              Approval Timeline
+            </h2>
+            <span className="rounded-full bg-sand px-2.5 py-0.5 text-xs font-bold text-ink/70">
+              {doc.reviewers.filter(r => r.decision === 'APPROVED').length} / {doc.reviewers.length} Approved
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-ink/55">Step-by-step workflow progression</p>
+
+          <div className="mt-5 relative pl-6 space-y-6 before:absolute before:bottom-2 before:top-2 before:left-2 before:w-0.5 before:bg-ink/10">
+            {/* Step 1: Submission */}
+            <div className="relative">
+              <span className="absolute -left-6 top-1 grid h-4 w-4 place-items-center rounded-full bg-moss text-[10px] text-white ring-4 ring-white">✓</span>
+              <p className="text-xs font-black uppercase tracking-wider text-moss">Step 1: Submitted</p>
+              <p className="text-sm font-bold mt-0.5">{doc.owner} uploaded v{doc.currentVersion || 1}</p>
+              <p className="text-[11px] text-ink/50">{new Date(doc.createdAt).toLocaleString()}</p>
+            </div>
+
+            {/* Step 2: Reviewers Phase */}
+            <div className="relative">
+              <span className="absolute -left-6 top-1 grid h-4 w-4 place-items-center rounded-full bg-mint text-[10px] text-moss font-bold ring-4 ring-white">2</span>
+              <p className="text-xs font-black uppercase tracking-wider text-moss">Step 2: Review & Approvals</p>
+              <div className="mt-2 space-y-2">
+                {doc.reviewers.map((r) => {
+                  const approved = r.decision === 'APPROVED'
+                  const rejected = r.decision === 'REJECTED'
+                  return (
+                    <div key={r.id} className="rounded-xl bg-sand/60 p-3 text-sm flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-xs">{r.name}</p>
+                        {r.decidedAt && (
+                          <p className="text-[10px] text-ink/50 mt-0.5">{new Date(r.decidedAt).toLocaleString()}</p>
+                        )}
+                      </div>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        approved ? 'bg-mint text-moss' :
+                        rejected ? 'bg-red-100 text-red-700' :
+                        'bg-sand text-ink/60'
+                      }`}>
+                        {r.decision}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
-            ))}
+            </div>
+
+            {/* Step 3: Final Signature / Certification */}
+            <div className="relative">
+              <span className={`absolute -left-6 top-1 grid h-4 w-4 place-items-center rounded-full text-[10px] font-bold ring-4 ring-white ${
+                doc.status === 'SIGNED' || doc.status === 'ARCHIVED' ? 'bg-moss text-white' : 'bg-sand text-ink/50'
+              }`}>
+                {doc.status === 'SIGNED' || doc.status === 'ARCHIVED' ? '✓' : '3'}
+              </span>
+              <p className="text-xs font-black uppercase tracking-wider text-moss">Step 3: Signature & Certification</p>
+              <p className="text-sm font-bold mt-0.5">
+                {doc.status === 'SIGNED' || doc.status === 'ARCHIVED' ? 'Signed & Certified' : ready ? 'Ready for Manager Signature' : 'Pending Reviewer Consensus'}
+              </p>
+              <p className="text-[11px] text-ink/50">
+                {doc.status === 'SIGNED' ? 'Final cryptographic certificate generated' : 'Awaiting all approvals'}
+              </p>
+            </div>
           </div>
         </section>
 

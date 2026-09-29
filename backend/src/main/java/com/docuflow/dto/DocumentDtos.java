@@ -61,7 +61,7 @@ public final class DocumentDtos {
     Instant createdAt
   ){}
 
-  public record Reviewer(Long id, String name, ApprovalDecision decision){}
+  public record Reviewer(Long id, String name, ApprovalDecision decision, Instant decidedAt){}
   public record CommentResponse(String author, String content, Instant createdAt){}
   public record ActivityResponse(String actor, String action, String detail, Instant createdAt){}
 }
