@@ -46,6 +46,10 @@ public final class DocumentDtos {
     String categoryName,
     List<String> tags,
     Instant createdAt,
+    Instant archivedAt,
+    String archivedBy,
+    Long archivedById,
+    String archiveReason,
     List<Reviewer> reviewers
   ){}
 

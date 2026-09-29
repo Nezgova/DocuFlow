@@ -153,18 +153,51 @@ public class DocumentService {
   return map(doc);
  }
 
- public DocumentResponse archive(Long id, User user) {
-  var doc = access(id, user);
-  if (doc.getStatus() != DocumentStatus.SIGNED) {
-   throw new ApiException(HttpStatus.CONFLICT, "Only finalized documents can be archived");
+ public DocumentResponse archive(Long id, String reason, User user) {
+   var doc = access(id, user);
+   if (doc.getStatus() != DocumentStatus.SIGNED) {
+    throw new ApiException(HttpStatus.CONFLICT, "Only finalized documents can be archived");
+   }
+   if (user.getRole() != Role.ADMINISTRATOR && user.getRole() != Role.MANAGER) {
+    throw new ApiException(HttpStatus.FORBIDDEN, "Only a manager or administrator may archive");
+   }
+   doc.setStatus(DocumentStatus.ARCHIVED);
+   doc.setArchivedAt(java.time.Instant.now());
+   doc.setArchivedBy(user);
+   doc.setArchiveReason(reason != null && !reason.isBlank() ? reason.trim() : "Archived by " + user.getFullName());
+   log(doc, user, "DOCUMENT_ARCHIVED", "Document archived. Reason: " + doc.getArchiveReason());
+   return map(doc);
   }
-  if (user.getRole() != Role.ADMINISTRATOR && user.getRole() != Role.MANAGER) {
-   throw new ApiException(HttpStatus.FORBIDDEN, "Only a manager or administrator may archive");
+
+  public DocumentResponse restore(Long id, User user) {
+   var doc = access(id, user);
+   if (doc.getStatus() != DocumentStatus.ARCHIVED) {
+    throw new ApiException(HttpStatus.CONFLICT, "Only archived documents can be restored");
+   }
+   if (user.getRole() != Role.ADMINISTRATOR && user.getRole() != Role.MANAGER) {
+    throw new ApiException(HttpStatus.FORBIDDEN, "Only a manager or administrator may restore documents");
+   }
+   doc.setStatus(DocumentStatus.APPROVED);
+   doc.setArchivedAt(null);
+   doc.setArchivedBy(null);
+   doc.setArchiveReason(null);
+   log(doc, user, "DOCUMENT_RESTORED", "Document restored from archive");
+   return map(doc);
   }
-  doc.setStatus(DocumentStatus.ARCHIVED);
-  log(doc, user, "DOCUMENT_ARCHIVED", "Document archived");
-  return map(doc);
- }
+
+  public void permanentDelete(Long id, User user) {
+   var doc = access(id, user);
+   if (user.getRole() != Role.ADMINISTRATOR) {
+    throw new ApiException(HttpStatus.FORBIDDEN, "Only an administrator can permanently delete documents");
+   }
+   try {
+    java.nio.file.Files.deleteIfExists(java.nio.file.Path.of("uploads", doc.getStoredFileName()));
+    for (var v : doc.getVersions()) {
+     java.nio.file.Files.deleteIfExists(java.nio.file.Path.of("uploads", v.getStoredFileName()));
+    }
+   } catch (Exception ignored) {}
+   docs.delete(doc);
+  }
 
  public DocumentResponse rename(Long id, RenameRequest request, User user) {
   var doc = access(id, user);
@@ -406,8 +439,12 @@ public class DocumentService {
    d.getDepartment() != null ? d.getDepartment().getName() : null,
    d.getCategory() != null ? d.getCategory().getId() : null,
    d.getCategory() != null ? d.getCategory().getName() : null,
-   d.getTags().stream().map(Tag::getName).sorted().toList(),
-   d.getCreatedAt(),
+    d.getTags().stream().map(Tag::getName).sorted().toList(),
+    d.getCreatedAt(),
+    d.getArchivedAt(),
+    d.getArchivedBy() != null ? d.getArchivedBy().getFullName() : null,
+    d.getArchivedBy() != null ? d.getArchivedBy().getId() : null,
+    d.getArchiveReason(),
     d.getApprovals().stream().map(a -> new Reviewer(a.getReviewer().getId(), a.getReviewer().getFullName(), a.getDecision(), a.getDecidedAt())).toList()
   );
  }

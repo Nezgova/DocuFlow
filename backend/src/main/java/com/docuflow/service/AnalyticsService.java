@@ -23,7 +23,7 @@ public class AnalyticsService {
 
   public DashboardAnalyticsResponse getDashboardAnalytics(User user) {
     boolean isAdmin = user.getRole() == Role.ADMINISTRATOR || user.getRole() == Role.MANAGER;
-    List<Document> allVisible = documentRepository.visibleTo(user, isAdmin, "", null, null, null, Pageable.unpaged()).getContent();
+    List<Document> allVisible = documentRepository.visibleTo(user, isAdmin, "", null, null, null, null, null, null, null, null, null, Pageable.unpaged()).getContent();
 
     long totalDocuments = allVisible.size();
     long pendingDocuments = allVisible.stream().filter(d -> d.getStatus() == DocumentStatus.PENDING).count();

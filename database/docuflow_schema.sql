@@ -67,22 +67,27 @@ CREATE TABLE IF NOT EXISTS documents (
   priority VARCHAR(20) NOT NULL DEFAULT 'NORMAL',
   due_date DATE NULL,
   current_version INT NOT NULL DEFAULT 1,
-  owner_id BIGINT NOT NULL,
-  department_id BIGINT NULL,
-  category_id BIGINT NULL,
-  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-  PRIMARY KEY (id),
-  KEY idx_documents_owner (owner_id),
-  KEY idx_documents_department (department_id),
-  KEY idx_documents_category (category_id),
-  KEY idx_documents_status (status),
-  KEY idx_documents_priority (priority),
-  KEY idx_documents_due_date (due_date),
-  KEY idx_documents_created_at (created_at),
-  CONSTRAINT fk_documents_owner FOREIGN KEY (owner_id) REFERENCES users(id),
-  CONSTRAINT fk_documents_department FOREIGN KEY (department_id) REFERENCES departments(id),
-  CONSTRAINT fk_documents_category FOREIGN KEY (category_id) REFERENCES categories(id)
+   owner_id BIGINT NOT NULL,
+   department_id BIGINT NULL,
+   category_id BIGINT NULL,
+   archived_at TIMESTAMP(6) NULL,
+   archived_by BIGINT NULL,
+   archive_reason VARCHAR(255) NULL,
+   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+   updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+   PRIMARY KEY (id),
+   KEY idx_documents_owner (owner_id),
+   KEY idx_documents_department (department_id),
+   KEY idx_documents_category (category_id),
+   KEY idx_documents_archived_by (archived_by),
+   KEY idx_documents_status (status),
+   KEY idx_documents_priority (priority),
+   KEY idx_documents_due_date (due_date),
+   KEY idx_documents_created_at (created_at),
+   CONSTRAINT fk_documents_owner FOREIGN KEY (owner_id) REFERENCES users(id),
+   CONSTRAINT fk_documents_department FOREIGN KEY (department_id) REFERENCES departments(id),
+   CONSTRAINT fk_documents_category FOREIGN KEY (category_id) REFERENCES categories(id),
+   CONSTRAINT fk_documents_archived_by FOREIGN KEY (archived_by) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS document_versions (
@@ -229,4 +234,13 @@ CREATE TABLE IF NOT EXISTS workflow_template_steps (
   KEY idx_workflow_template_steps_reviewer (reviewer_id),
   CONSTRAINT fk_workflow_template_steps_template FOREIGN KEY (workflow_template_id) REFERENCES workflow_templates(id) ON DELETE CASCADE,
   CONSTRAINT fk_workflow_template_steps_reviewer FOREIGN KEY (reviewer_id) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS settings (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  setting_key VARCHAR(100) NOT NULL,
+  setting_value TEXT NULL,
+  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  CONSTRAINT uk_settings_key UNIQUE (setting_key)
 ) ENGINE=InnoDB;

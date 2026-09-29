@@ -29,6 +29,9 @@ public class Document {
  private Set<Tag> tags = new HashSet<>();
  @Column(nullable=false,updatable=false) private Instant createdAt=Instant.now();
  @Column(nullable=false) private Instant updatedAt=Instant.now();
+ @Column(name="archived_at") private Instant archivedAt;
+ @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="archived_by") private User archivedBy;
+ @Column(name="archive_reason", length=255) private String archiveReason;
  @OneToMany(mappedBy="document",cascade=CascadeType.ALL,orphanRemoval=true) private List<Approval> approvals=new ArrayList<>();
  @OneToMany(mappedBy="document",cascade=CascadeType.ALL,orphanRemoval=true) @OrderBy("versionNumber DESC") private List<DocumentVersion> versions=new ArrayList<>();
 
@@ -76,7 +79,14 @@ public class Document {
    touch();
  }
 
- public void rename(String value){title=value;touch();}
+  public Instant getArchivedAt(){return archivedAt;}
+  public void setArchivedAt(Instant archivedAt){this.archivedAt=archivedAt; touch();}
+  public User getArchivedBy(){return archivedBy;}
+  public void setArchivedBy(User archivedBy){this.archivedBy=archivedBy; touch();}
+  public String getArchiveReason(){return archiveReason;}
+  public void setArchiveReason(String archiveReason){this.archiveReason=archiveReason; touch();}
+
+  public void rename(String value){title=value;touch();}
  public void setStatus(DocumentStatus value){status=value;touch();}
  private void touch(){updatedAt=Instant.now();}
  public void replaceFile(String stored,String original,long size){storedFileName=stored;originalFileName=original;fileSize=size;touch();}

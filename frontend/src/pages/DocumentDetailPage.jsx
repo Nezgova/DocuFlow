@@ -176,16 +176,53 @@ export default function DocumentDetailPage() {
 
           {isManagerOrAdmin && doc.status === 'SIGNED' && (
             <button
-              onClick={() => action(`/documents/${id}/archive`)}
+              onClick={() => {
+                const reason = prompt('Enter archive reason / notes:')
+                if (reason !== null) {
+                  api.post(`/documents/${id}/archive`, { reason })
+                    .then(r => setDoc(r.data))
+                    .catch(err => alert(err.response?.data?.message || 'Failed to archive document'))
+                }
+              }}
               className="rounded-xl border border-ink/15 bg-white px-4 py-3 text-sm font-bold hover:bg-sand"
             >
               Archive
+            </button>
+          )}
+
+          {isManagerOrAdmin && doc.status === 'ARCHIVED' && (
+            <button
+              onClick={() => {
+                if (confirm('Restore this document from the archive?')) {
+                  api.post(`/documents/${id}/restore`)
+                    .then(r => setDoc(r.data))
+                    .catch(err => alert(err.response?.data?.message || 'Failed to restore document'))
+                }
+              }}
+              className="rounded-xl bg-moss px-4 py-3 text-sm font-bold text-white hover:bg-ink"
+            >
+              Restore from Archive
             </button>
           )}
         </div>
       </div>
 
       {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+
+      {doc.status === 'ARCHIVED' && (
+        <div className="mt-6 rounded-2xl bg-amber-50 border border-amber-200 p-5 flex items-start gap-4">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-600 text-white font-bold">
+            AR
+          </div>
+          <div>
+            <h2 className="font-extrabold text-amber-900">Document Archived in Compliance Vault</h2>
+            <p className="mt-1 text-sm text-amber-800">
+              Archived on {doc.archivedAt ? new Date(doc.archivedAt).toLocaleString() : 'N/A'} {doc.archivedBy ? `by ${doc.archivedBy}` : ''}.
+              {doc.archiveReason && ` Reason: ${doc.archiveReason}`}
+            </p>
+          </div>
+        </div>
+      )}
 
       {signed && (
         <div className="mt-6 rounded-2xl bg-mint/30 border border-moss/20 p-5 flex items-start gap-4">

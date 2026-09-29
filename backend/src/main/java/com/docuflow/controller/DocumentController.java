@@ -90,10 +90,22 @@ public class DocumentController {
   return s.sign(id, u, sigName);
  }
 
- @PostMapping("/{id}/archive")
- public DocumentResponse archive(@PathVariable Long id, @AuthenticationPrincipal User u) {
-  return s.archive(id, u);
- }
+  @PostMapping("/{id}/archive")
+  public DocumentResponse archive(@PathVariable Long id, @RequestBody(required = false) java.util.Map<String, String> body, @AuthenticationPrincipal User u) {
+   String reason = body != null ? body.get("reason") : null;
+   return s.archive(id, reason, u);
+  }
+
+  @PostMapping("/{id}/restore")
+  public DocumentResponse restore(@PathVariable Long id, @AuthenticationPrincipal User u) {
+   return s.restore(id, u);
+  }
+
+  @DeleteMapping("/{id}/permanent")
+  public ResponseEntity<?> permanentDelete(@PathVariable Long id, @AuthenticationPrincipal User u) {
+   s.permanentDelete(id, u);
+   return ResponseEntity.ok().build();
+  }
 
  @GetMapping("/{id}/comments")
  public List<CommentResponse> comments(@PathVariable Long id, @AuthenticationPrincipal User u) {
