@@ -41,7 +41,7 @@ public class UserManagementService {
       request.role(),
       dept
     ));
-    return new UserResponse(u.getId(), u.getFullName(), u.getEmail(), u.getRole(), dept != null ? dept.getId() : null, dept != null ? dept.getName() : null);
+    return new UserResponse(u.getId(), u.getFullName(), u.getEmail(), u.getRole(), dept != null ? dept.getId() : null, dept != null ? dept.getName() : null, u.getAvatar(), u.getPhone(), u.getJobTitle(), u.getCreatedAt());
   }
 
   public UserResponse update(Long id, UpdateUserRequest request) {
@@ -52,6 +52,6 @@ public class UserManagementService {
     }
     u.update(request.fullName().trim(), request.role(), request.active(), dept);
     users.save(u);
-    return new UserResponse(u.getId(), u.getFullName(), u.getEmail(), u.getRole(), dept != null ? dept.getId() : null, dept != null ? dept.getName() : null);
+    return new UserResponse(u.getId(), u.getFullName(), u.getEmail(), u.getRole(), dept != null ? dept.getId() : null, dept != null ? dept.getName() : null, u.getAvatar(), u.getPhone(), u.getJobTitle(), u.getCreatedAt());
   }
 }

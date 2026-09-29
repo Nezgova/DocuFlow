@@ -27,7 +27,11 @@ public class UserDirectoryController {
         user.getEmail(),
         user.getRole(),
         user.getDepartment() != null ? user.getDepartment().getId() : null,
-        user.getDepartment() != null ? user.getDepartment().getName() : null
+        user.getDepartment() != null ? user.getDepartment().getName() : null,
+        user.getAvatar(),
+        user.getPhone(),
+        user.getJobTitle(),
+        user.getCreatedAt()
       )).toList();
   }
   @PostMapping

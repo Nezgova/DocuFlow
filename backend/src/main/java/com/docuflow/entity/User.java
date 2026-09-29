@@ -13,6 +13,9 @@ public class User {
   @ManyToOne(fetch = FetchType.LAZY) private Department department;
   @Column(nullable = false) private boolean active = true;
   @Column(nullable = false, updatable = false) private Instant createdAt = Instant.now();
+  @Column(length = 500) private String avatar;
+  @Column(length = 50) private String phone;
+  @Column(length = 120) private String jobTitle;
 
   protected User() {}
 
@@ -33,6 +36,15 @@ public class User {
   public boolean isActive(){return active;}
   public Instant getCreatedAt(){return createdAt;}
 
+  public String getAvatar(){return avatar;}
+  public String getPhone(){return phone;}
+  public String getJobTitle(){return jobTitle;}
+
+  public void setAvatar(String avatar){this.avatar = avatar;}
+  public void setPhone(String phone){this.phone = phone;}
+  public void setJobTitle(String jobTitle){this.jobTitle = jobTitle;}
+  public void setPasswordHash(String passwordHash){this.passwordHash = passwordHash;}
+
   public void setDepartment(Department department) {
     this.department = department;
   }
@@ -42,5 +54,12 @@ public class User {
     this.role = newRole;
     this.active = isActive;
     this.department = department;
+  }
+
+  public void updateProfile(String fullName, String phone, String jobTitle, String avatar) {
+    if (fullName != null && !fullName.isBlank()) this.fullName = fullName;
+    this.phone = phone;
+    this.jobTitle = jobTitle;
+    this.avatar = avatar;
   }
 }
