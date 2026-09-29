@@ -1,4 +1,4 @@
-import { FileText, Hash, Search, Upload, BookmarkPlus, Trash2, Bookmark, SlidersHorizontal, X } from 'lucide-react'
+import { FileText, Hash, Search, Upload, BookmarkPlus, Trash2, Bookmark, SlidersHorizontal, CheckCircle2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
@@ -12,6 +12,7 @@ export default function DocumentsPage(){
   const [usersList, setUsersList] = useState([])
   const [savedFilters, setSavedFilters] = useState([])
 
+  // Active query parameters used for fetching
   const [search, setSearch] = useState('')
   const [departmentId, setDepartmentId] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -21,6 +22,17 @@ export default function DocumentsPage(){
   const [uploaderId, setUploaderId] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+
+  // Draft filter parameters in the advanced search modal/panel before clicking Confirm
+  const [draftSearch, setDraftSearch] = useState('')
+  const [draftDepartmentId, setDraftDepartmentId] = useState('')
+  const [draftCategoryId, setDraftCategoryId] = useState('')
+  const [draftTagId, setDraftTagId] = useState('')
+  const [draftStatus, setDraftStatus] = useState('')
+  const [draftPriority, setDraftPriority] = useState('')
+  const [draftUploaderId, setDraftUploaderId] = useState('')
+  const [draftStartDate, setDraftStartDate] = useState('')
+  const [draftEndDate, setDraftEndDate] = useState('')
 
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [upload, setUpload] = useState(false)
@@ -54,6 +66,45 @@ export default function DocumentsPage(){
   }, [])
 
   useEffect(() => { load() }, [search, departmentId, categoryId, tagId, status, priority, uploaderId, startDate, endDate])
+
+  const openAdvancedSearch = () => {
+    // Sync draft with active state when opening
+    setDraftSearch(search)
+    setDraftDepartmentId(departmentId)
+    setDraftCategoryId(categoryId)
+    setDraftTagId(tagId)
+    setDraftStatus(status)
+    setDraftPriority(priority)
+    setDraftUploaderId(uploaderId)
+    setDraftStartDate(startDate)
+    setDraftEndDate(endDate)
+    setShowAdvanced(true)
+  }
+
+  const handleConfirmSearch = () => {
+    setSearch(draftSearch)
+    setDepartmentId(draftDepartmentId)
+    setCategoryId(draftCategoryId)
+    setTagId(draftTagId)
+    setStatus(draftStatus)
+    setPriority(draftPriority)
+    setUploaderId(draftUploaderId)
+    setStartDate(draftStartDate)
+    setEndDate(draftEndDate)
+    setShowAdvanced(false)
+  }
+
+  const handleClearDraft = () => {
+    setDraftSearch('')
+    setDraftDepartmentId('')
+    setDraftCategoryId('')
+    setDraftTagId('')
+    setDraftStatus('')
+    setDraftPriority('')
+    setDraftUploaderId('')
+    setDraftStartDate('')
+    setDraftEndDate('')
+  }
 
   const handleSaveFilter = () => {
     const name = prompt('Enter a name for this saved filter:')
@@ -93,18 +144,6 @@ export default function DocumentsPage(){
       .catch(() => alert('Failed to delete filter'))
   }
 
-  const clearFilters = () => {
-    setSearch('')
-    setDepartmentId('')
-    setCategoryId('')
-    setTagId('')
-    setStatus('')
-    setPriority('')
-    setUploaderId('')
-    setStartDate('')
-    setEndDate('')
-  }
-
   const sortedDocs = [...docs].sort((a,b)=>{
     if(a.status==='PENDING'&&b.status!=='PENDING')return-1;
     if(a.status!=='PENDING'&&b.status==='PENDING')return 1;
@@ -120,7 +159,7 @@ export default function DocumentsPage(){
         </div>
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => setShowAdvanced(!showAdvanced)} 
+            onClick={() => showAdvanced ? setShowAdvanced(false) : openAdvancedSearch()} 
             className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition ${showAdvanced ? 'border-moss bg-mint/40 text-moss' : 'border-ink/10 bg-white text-ink hover:bg-sand'}`}
           >
             <SlidersHorizontal size={17} className="text-moss"/>Advanced Search {showAdvanced ? '▲' : '▼'}
@@ -136,17 +175,17 @@ export default function DocumentsPage(){
 
       {success && <p className="mt-4 rounded-xl bg-mint/40 px-4 py-3 text-sm text-moss font-bold">{success}</p>}
 
-      {/* Advanced Search Drawer Panel */}
+      {/* Advanced Search Panel with Confirm Button */}
       {showAdvanced && (
         <div className="mt-6 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between pb-4 border-b border-ink/10">
-            <h2 className="text-sm font-extrabold uppercase tracking-wider text-ink/70">Advanced Multi-Criteria Filters</h2>
-            <button onClick={clearFilters} className="text-xs font-bold text-moss hover:underline">Clear all filters</button>
+            <h2 className="text-sm font-extrabold uppercase tracking-wider text-ink/70">Advanced Multi-Criteria Search Panel</h2>
+            <button onClick={handleClearDraft} className="text-xs font-bold text-moss hover:underline">Reset draft filters</button>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Status</label>
-              <select className="field w-full text-xs" value={status} onChange={e => setStatus(e.target.value)}>
+              <select className="field w-full text-xs" value={draftStatus} onChange={e => setDraftStatus(e.target.value)}>
                 <option value="">All Statuses</option>
                 <option value="PENDING">Pending</option>
                 <option value="APPROVED">Approved</option>
@@ -156,7 +195,7 @@ export default function DocumentsPage(){
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Priority</label>
-              <select className="field w-full text-xs" value={priority} onChange={e => setPriority(e.target.value)}>
+              <select className="field w-full text-xs" value={draftPriority} onChange={e => setDraftPriority(e.target.value)}>
                 <option value="">All Priorities</option>
                 <option value="URGENT">Urgent</option>
                 <option value="HIGH">High</option>
@@ -166,7 +205,7 @@ export default function DocumentsPage(){
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Uploader</label>
-              <select className="field w-full text-xs" value={uploaderId} onChange={e => setUploaderId(e.target.value)}>
+              <select className="field w-full text-xs" value={draftUploaderId} onChange={e => setDraftUploaderId(e.target.value)}>
                 <option value="">All Uploaders</option>
                 {usersList.map(u => (
                   <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
@@ -175,7 +214,7 @@ export default function DocumentsPage(){
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Department</label>
-              <select className="field w-full text-xs" value={departmentId} onChange={e => setDepartmentId(e.target.value)}>
+              <select className="field w-full text-xs" value={draftDepartmentId} onChange={e => setDraftDepartmentId(e.target.value)}>
                 <option value="">All Departments</option>
                 {departments.map(d => (
                   <option key={d.id} value={d.id}>{d.name}</option>
@@ -184,7 +223,7 @@ export default function DocumentsPage(){
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Category</label>
-              <select className="field w-full text-xs" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+              <select className="field w-full text-xs" value={draftCategoryId} onChange={e => setDraftCategoryId(e.target.value)}>
                 <option value="">All Categories</option>
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -193,7 +232,7 @@ export default function DocumentsPage(){
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Tag</label>
-              <select className="field w-full text-xs" value={tagId} onChange={e => setTagId(e.target.value)}>
+              <select className="field w-full text-xs" value={draftTagId} onChange={e => setDraftTagId(e.target.value)}>
                 <option value="">All Tags</option>
                 {tags.map(t => (
                   <option key={t.id} value={t.id}>{t.name}</option>
@@ -202,12 +241,20 @@ export default function DocumentsPage(){
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Start Date (From)</label>
-              <input type="date" className="field w-full text-xs" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              <input type="date" className="field w-full text-xs" value={draftStartDate} onChange={e => setDraftStartDate(e.target.value)} />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">End Date (To)</label>
-              <input type="date" className="field w-full text-xs" value={endDate} onChange={e => setEndDate(e.target.value)} />
+              <input type="date" className="field w-full text-xs" value={draftEndDate} onChange={e => setDraftEndDate(e.target.value)} />
             </div>
+          </div>
+          <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-ink/10">
+            <button onClick={() => setShowAdvanced(false)} className="rounded-xl border border-ink/10 px-4 py-2.5 text-xs font-bold text-ink hover:bg-sand">
+              Cancel
+            </button>
+            <button onClick={handleConfirmSearch} className="btn-primary text-xs flex items-center gap-2">
+              <CheckCircle2 size={15}/> Confirm & Search
+            </button>
           </div>
         </div>
       )}
