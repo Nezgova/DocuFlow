@@ -33,8 +33,21 @@ public class DocumentController {
  }
 
  @GetMapping
- public Page<DocumentResponse> list(@AuthenticationPrincipal User u, @RequestParam(defaultValue = "") String q, @RequestParam(required = false) Long departmentId, @RequestParam(required = false) Long categoryId, @RequestParam(required = false) Long tagId, @PageableDefault(size = 20) Pageable p) {
-  return s.list(u, q, departmentId, categoryId, tagId, p);
+ public Page<DocumentResponse> list(
+   @AuthenticationPrincipal User u, 
+   @RequestParam(defaultValue = "") String q, 
+   @RequestParam(required = false) Long departmentId, 
+   @RequestParam(required = false) Long categoryId, 
+   @RequestParam(required = false) Long tagId, 
+   @RequestParam(required = false) com.docuflow.entity.DocumentStatus status,
+   @RequestParam(required = false) String priority,
+   @RequestParam(required = false) Long uploaderId,
+   @RequestParam(required = false) Long reviewerId,
+   @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.Instant startDate,
+   @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.Instant endDate,
+   @PageableDefault(size = 20) Pageable p
+ ) {
+  return s.list(u, q, departmentId, categoryId, tagId, status, priority, uploaderId, reviewerId, startDate, endDate, p);
  }
 
  @GetMapping("/{id}")

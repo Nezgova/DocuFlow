@@ -1,4 +1,4 @@
-import { FileText, Hash, Search, Upload, BookmarkPlus, Trash2, Bookmark } from 'lucide-react'
+import { FileText, Hash, Search, Upload, BookmarkPlus, Trash2, Bookmark, SlidersHorizontal, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../services/api'
@@ -9,12 +9,20 @@ export default function DocumentsPage(){
   const [departments, setDepartments] = useState([])
   const [categories, setCategories] = useState([])
   const [tags, setTags] = useState([])
+  const [usersList, setUsersList] = useState([])
   const [savedFilters, setSavedFilters] = useState([])
+
   const [search, setSearch] = useState('')
   const [departmentId, setDepartmentId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [tagId, setTagId] = useState('')
-  const [priorityFilter, setPriorityFilter] = useState('')
+  const [status, setStatus] = useState('')
+  const [priority, setPriority] = useState('')
+  const [uploaderId, setUploaderId] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [upload, setUpload] = useState(false)
   const [success, setSuccess] = useState('')
 
@@ -24,6 +32,12 @@ export default function DocumentsPage(){
     if (departmentId) params.departmentId = departmentId
     if (categoryId) params.categoryId = categoryId
     if (tagId) params.tagId = tagId
+    if (status) params.status = status
+    if (priority) params.priority = priority
+    if (uploaderId) params.uploaderId = uploaderId
+    if (startDate) params.startDate = new Date(startDate).toISOString()
+    if (endDate) params.endDate = new Date(endDate + 'T23:59:59').toISOString()
+
     api.get('/documents', { params }).then(r => setDocs(r.data.content))
   }
 
@@ -35,15 +49,16 @@ export default function DocumentsPage(){
     api.get('/departments').then(r => setDepartments(r.data)).catch(() => {})
     api.get('/categories').then(r => setCategories(r.data)).catch(() => {})
     api.get('/tags').then(r => setTags(r.data)).catch(() => {})
+    api.get('/users').then(r => setUsersList(r.data)).catch(() => {})
     loadSavedFilters()
   }, [])
 
-  useEffect(() => { load() }, [search, departmentId, categoryId, tagId])
+  useEffect(() => { load() }, [search, departmentId, categoryId, tagId, status, priority, uploaderId, startDate, endDate])
 
   const handleSaveFilter = () => {
     const name = prompt('Enter a name for this saved filter:')
     if (!name || !name.trim()) return
-    const filterData = JSON.stringify({ search, departmentId, categoryId, tagId, priorityFilter })
+    const filterData = JSON.stringify({ search, departmentId, categoryId, tagId, status, priority, uploaderId, startDate, endDate })
     api.post('/saved-filters', { name: name.trim(), filterJson: filterData })
       .then(() => {
         setSuccess('Filter saved successfully')
@@ -60,7 +75,11 @@ export default function DocumentsPage(){
       setDepartmentId(data.departmentId || '')
       setCategoryId(data.categoryId || '')
       setTagId(data.tagId || '')
-      setPriorityFilter(data.priorityFilter || '')
+      setStatus(data.status || '')
+      setPriority(data.priority || '')
+      setUploaderId(data.uploaderId || '')
+      setStartDate(data.startDate || '')
+      setEndDate(data.endDate || '')
     } catch {
       alert('Invalid filter data')
     }
@@ -74,12 +93,19 @@ export default function DocumentsPage(){
       .catch(() => alert('Failed to delete filter'))
   }
 
-  const filteredDocs = docs.filter(d => {
-    if (priorityFilter && d.priority !== priorityFilter) return false
-    return true
-  })
+  const clearFilters = () => {
+    setSearch('')
+    setDepartmentId('')
+    setCategoryId('')
+    setTagId('')
+    setStatus('')
+    setPriority('')
+    setUploaderId('')
+    setStartDate('')
+    setEndDate('')
+  }
 
-  const sortedDocs = [...filteredDocs].sort((a,b)=>{
+  const sortedDocs = [...docs].sort((a,b)=>{
     if(a.status==='PENDING'&&b.status!=='PENDING')return-1;
     if(a.status!=='PENDING'&&b.status==='PENDING')return 1;
     return 0;
@@ -87,14 +113,20 @@ export default function DocumentsPage(){
 
   return (
     <>
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[.14em] text-moss">Document workspace</p>
+          <p className="font-mono text-xs uppercase tracking-[.14em] text-moss">Document workspace & advanced search</p>
           <h1 className="mt-2 text-3xl font-extrabold">Documents</h1>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowAdvanced(!showAdvanced)} 
+            className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition ${showAdvanced ? 'border-moss bg-mint/40 text-moss' : 'border-ink/10 bg-white text-ink hover:bg-sand'}`}
+          >
+            <SlidersHorizontal size={17} className="text-moss"/>Advanced Search {showAdvanced ? '▲' : '▼'}
+          </button>
           <button onClick={handleSaveFilter} className="flex items-center gap-2 rounded-xl border border-ink/10 bg-white px-4 py-3 text-sm font-bold text-ink hover:bg-sand">
-            <BookmarkPlus size={17} className="text-moss"/>Save current filter
+            <BookmarkPlus size={17} className="text-moss"/>Save Filter
           </button>
           <button onClick={()=>setUpload(true)} className="flex items-center gap-2 rounded-xl bg-moss px-4 py-3 text-sm font-bold text-white hover:bg-ink">
             <Upload size={17}/>Upload PDF
@@ -103,6 +135,82 @@ export default function DocumentsPage(){
       </div>
 
       {success && <p className="mt-4 rounded-xl bg-mint/40 px-4 py-3 text-sm text-moss font-bold">{success}</p>}
+
+      {/* Advanced Search Drawer Panel */}
+      {showAdvanced && (
+        <div className="mt-6 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between pb-4 border-b border-ink/10">
+            <h2 className="text-sm font-extrabold uppercase tracking-wider text-ink/70">Advanced Multi-Criteria Filters</h2>
+            <button onClick={clearFilters} className="text-xs font-bold text-moss hover:underline">Clear all filters</button>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Status</label>
+              <select className="field w-full text-xs" value={status} onChange={e => setStatus(e.target.value)}>
+                <option value="">All Statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Priority</label>
+              <select className="field w-full text-xs" value={priority} onChange={e => setPriority(e.target.value)}>
+                <option value="">All Priorities</option>
+                <option value="URGENT">Urgent</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Uploader</label>
+              <select className="field w-full text-xs" value={uploaderId} onChange={e => setUploaderId(e.target.value)}>
+                <option value="">All Uploaders</option>
+                {usersList.map(u => (
+                  <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Department</label>
+              <select className="field w-full text-xs" value={departmentId} onChange={e => setDepartmentId(e.target.value)}>
+                <option value="">All Departments</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Category</label>
+              <select className="field w-full text-xs" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+                <option value="">All Categories</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Tag</label>
+              <select className="field w-full text-xs" value={tagId} onChange={e => setTagId(e.target.value)}>
+                <option value="">All Tags</option>
+                {tags.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">Start Date (From)</label>
+              <input type="date" className="field w-full text-xs" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink/60 mb-1">End Date (To)</label>
+              <input type="date" className="field w-full text-xs" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {savedFilters.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -122,42 +230,9 @@ export default function DocumentsPage(){
       )}
 
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1 max-w-lg">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-3.5 text-ink/35" size={18}/>
-          <input className="field pl-10 w-full" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents…"/>
-        </div>
-        <div className="w-full sm:w-44">
-          <select className="field w-full" value={categoryId} onChange={e=>setCategoryId(e.target.value)}>
-            <option value="">All Categories</option>
-            {categories.map(c=>(
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="w-full sm:w-44">
-          <select className="field w-full" value={tagId} onChange={e=>setTagId(e.target.value)}>
-            <option value="">All Tags</option>
-            {tags.map(t=>(
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="w-full sm:w-44">
-          <select className="field w-full" value={departmentId} onChange={e=>setDepartmentId(e.target.value)}>
-            <option value="">All Departments</option>
-            {departments.map(d=>(
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="w-full sm:w-44">
-          <select className="field w-full" value={priorityFilter} onChange={e=>setPriorityFilter(e.target.value)}>
-            <option value="">All Priorities</option>
-            <option value="URGENT">Urgent</option>
-            <option value="HIGH">High</option>
-            <option value="NORMAL">Normal</option>
-            <option value="LOW">Low</option>
-          </select>
+          <input className="field pl-10 w-full" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents by title…"/>
         </div>
       </div>
 
@@ -205,7 +280,7 @@ export default function DocumentsPage(){
               </span>
             </Link>
           )
-        }) : <p className="p-10 text-center text-sm text-ink/55">No documents found matching your criteria.</p>}
+        }) : <p className="p-10 text-center text-sm text-ink/55">No documents found matching your advanced search criteria.</p>}
       </div>
 
       {upload && <UploadDocumentDialog onClose={()=>setUpload(false)} onUploaded={()=>{setUpload(false);load()}}/>}

@@ -91,8 +91,22 @@ public class DocumentService {
  }
 
  @Transactional(readOnly = true)
- public Page<DocumentResponse> list(User user, String search, Long departmentId, Long categoryId, Long tagId, Pageable page) {
-  return docs.visibleTo(user, user.getRole() == Role.ADMINISTRATOR, search == null ? "" : search, departmentId, categoryId, tagId, page).map(this::map);
+ public Page<DocumentResponse> list(User user, String search, Long departmentId, Long categoryId, Long tagId, DocumentStatus status, String priority, Long uploaderId, Long reviewerId, java.time.Instant startDate, java.time.Instant endDate, Pageable page) {
+  return docs.visibleTo(
+      user, 
+      user.getRole() == Role.ADMINISTRATOR, 
+      search == null ? "" : search, 
+      departmentId, 
+      categoryId, 
+      tagId, 
+      status, 
+      priority, 
+      uploaderId, 
+      reviewerId, 
+      startDate, 
+      endDate, 
+      page
+  ).map(this::map);
  }
 
  @Transactional(readOnly = true)
