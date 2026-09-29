@@ -209,3 +209,24 @@ WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Internship Convention')
 INSERT INTO categories (name, description)
 SELECT 'Technical Documentation', 'Technical specifications, architectures, and manuals'
 WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Technical Documentation');
+
+CREATE TABLE IF NOT EXISTS workflow_templates (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  name VARCHAR(150) NOT NULL,
+  description VARCHAR(500) NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  CONSTRAINT uk_workflow_templates_name UNIQUE (name)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS workflow_template_steps (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  workflow_template_id BIGINT NOT NULL,
+  reviewer_id BIGINT NOT NULL,
+  step_order INT NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_workflow_template_steps_template (workflow_template_id),
+  KEY idx_workflow_template_steps_reviewer (reviewer_id),
+  CONSTRAINT fk_workflow_template_steps_template FOREIGN KEY (workflow_template_id) REFERENCES workflow_templates(id) ON DELETE CASCADE,
+  CONSTRAINT fk_workflow_template_steps_reviewer FOREIGN KEY (reviewer_id) REFERENCES users(id)
+) ENGINE=InnoDB;

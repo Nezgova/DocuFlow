@@ -1,4 +1,4 @@
-import { Archive, Building2, FileText, Hash, Layers, LayoutDashboard, LogOut, Menu, Users, X, BookOpen, User } from 'lucide-react'
+import { Archive, Building2, FileText, Hash, Layers, LayoutDashboard, LogOut, Menu, Users, X, BookOpen, User, GitFork } from 'lucide-react'
 import { NavLink, Link, Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
@@ -10,6 +10,7 @@ const links = [
   { to: '/departments', label: 'Departments', icon: Building2 },
   { to: '/categories', label: 'Categories', icon: Layers },
   { to: '/tags', label: 'Tags', icon: Hash },
+  { to: '/workflow-templates', label: 'Workflow Templates', icon: GitFork },
   { to: '/archive', label: 'Archive', icon: Archive },
   { to: '/users', label: 'People', icon: Users, admin: true },
   { to: '/profile', label: 'My Profile', icon: User },

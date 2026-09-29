@@ -1,19 +1,37 @@
-import { FileUp, X } from 'lucide-react'
+import { FileUp, X, GitFork } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import api from '../services/api'
 
 export default function UploadDocumentDialog({ onClose, onUploaded }) {
-  const [title, setTitle] = useState(''), [file, setFile] = useState(null), [users, setUsers] = useState([]), [categories, setCategories] = useState([]), [categoryId, setCategoryId] = useState(''), [tagsInput, setTagsInput] = useState(''), [priority, setPriority] = useState('NORMAL'), [dueDate, setDueDate] = useState(''), [reviewerIds, setReviewerIds] = useState([]), [error, setError] = useState(''), [busy, setBusy] = useState(false)
+  const [title, setTitle] = useState(''), [file, setFile] = useState(null), [users, setUsers] = useState([]), [categories, setCategories] = useState([]), [templates, setTemplates] = useState([]), [templateId, setTemplateId] = useState(''), [categoryId, setCategoryId] = useState(''), [tagsInput, setTagsInput] = useState(''), [priority, setPriority] = useState('NORMAL'), [dueDate, setDueDate] = useState(''), [reviewerIds, setReviewerIds] = useState([]), [error, setError] = useState(''), [busy, setBusy] = useState(false)
+
   useEffect(() => {
     Promise.all([
       api.get('/users'),
-      api.get('/categories')
-    ]).then(([uRes, cRes]) => {
+      api.get('/categories'),
+      api.get('/workflow-templates')
+    ]).then(([uRes, cRes, tRes]) => {
       setUsers(uRes.data)
       setCategories(cRes.data)
+      setTemplates(tRes.data)
     }).catch(() => setError('Could not load available options.'))
   }, [])
+
+  const handleTemplateChange = (e) => {
+    const tid = e.target.value
+    setTemplateId(tid)
+    if (!tid) {
+      setReviewerIds([])
+      return
+    }
+    const t = templates.find(x => x.id === Number(tid))
+    if (t) {
+      setReviewerIds(t.steps.map(s => s.reviewerId))
+    }
+  }
+
   const toggle = (id) => setReviewerIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])
+
   async function submit(event) {
     event.preventDefault()
     setError('')
@@ -35,6 +53,7 @@ export default function UploadDocumentDialog({ onClose, onUploaded }) {
       setBusy(false)
     }
   }
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/45 p-4" role="dialog" aria-modal="true" aria-labelledby="upload-title">
       <form onSubmit={submit} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
@@ -46,6 +65,17 @@ export default function UploadDocumentDialog({ onClose, onUploaded }) {
           <button type="button" onClick={onClose} aria-label="Close upload dialog" className="rounded-lg p-1 text-ink/50 hover:bg-sand"><X /></button>
         </div>
         <label className="mt-5 block text-sm font-bold">Document title<input required maxLength="180" value={title} onChange={(event) => setTitle(event.target.value)} className="field mt-2" placeholder="e.g. Q3 budget forecast" /></label>
+        
+        {templates.length > 0 && (
+          <label className="mt-4 block text-sm font-bold flex items-center gap-1.5">
+            <GitFork size={15} className="text-moss" /> Workflow Template (optional)
+            <select className="field mt-2 w-full font-normal" value={templateId} onChange={handleTemplateChange}>
+              <option value="">Select a template to auto-assign approval chain</option>
+              {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.steps.length} steps)</option>)}
+            </select>
+          </label>
+        )}
+
         <label className="mt-4 block text-sm font-bold">Category
           <select className="field mt-2 w-full" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">Select category (optional)</option>
