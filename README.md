@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="DocuFlow Logo" width="100" height="100"/>
+</p>
+
 # DocuFlow
 
 DocuFlow is a full-stack document review and workflow management platform designed to centralize internal document lifecycles, structured approvals, versioning, and compliance audit logging.
@@ -136,6 +140,8 @@ DocuFlow/
 │   ├── PROJECT_FULL_SUMMARY.md
 │   ├── PROJECT_ARCHITECTURE_INVESTIGATION.md
 │   └── ARCHITECTURE_REFACTOR.md
+├── assets/                   # App logo and visual assets
+│   └── logo.png
 ├── run.ps1                   # Local orchestration script (Windows)
 └── README.md
 ```
