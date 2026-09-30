@@ -13,5 +13,9 @@ frontend/dist/
 .idea/
 .vscode/
 
+# Logs
+*.log
+logs/
+
 # Project Status / Local Roadmap Tracking
 PROJECT_STATUS.md

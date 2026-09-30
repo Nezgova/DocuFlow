@@ -7,7 +7,6 @@ import com.docuflow.repository.*;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,9 +25,9 @@ public class DocumentService {
  private final NotificationService notificationService;
  private final PdfGeneratorService pdfGenerator;
  private final DocumentVersionRepository documentVersionRepository;
- private final Path storage;
+ private final DocumentStorageService storageService;
 
- public DocumentService(DocumentRepository docs, UserRepository users, CommentRepository comments, ActivityLogRepository activity, CategoryRepository categories, TagRepository tagRepository, NotificationService notificationService, PdfGeneratorService pdfGenerator, DocumentVersionRepository documentVersionRepository, @Value("${app.storage-dir}") String storage) {
+ public DocumentService(DocumentRepository docs, UserRepository users, CommentRepository comments, ActivityLogRepository activity, CategoryRepository categories, TagRepository tagRepository, NotificationService notificationService, PdfGeneratorService pdfGenerator, DocumentVersionRepository documentVersionRepository, DocumentStorageService storageService) {
   this.docs = docs;
   this.users = users;
   this.comments = comments;
@@ -38,22 +37,17 @@ public class DocumentService {
   this.notificationService = notificationService;
   this.pdfGenerator = pdfGenerator;
   this.documentVersionRepository = documentVersionRepository;
-  this.storage = Paths.get(storage).toAbsolutePath().normalize();
+  this.storageService = storageService;
  }
 
  public DocumentResponse upload(CreateRequest req, MultipartFile file, User owner) {
-  if (file.isEmpty() || !"application/pdf".equals(file.getContentType())) {
-   throw new ApiException(HttpStatus.BAD_REQUEST, "Only PDF files are accepted");
-  }
+  String stored = storageService.storeFile(file);
   try {
-   Files.createDirectories(storage);
-    String stored = UUID.randomUUID() + ".pdf";
-    Files.copy(file.getInputStream(), storage.resolve(stored));
-    var doc = new Document(req.title().trim(), req.description(), stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize(), owner);
-    if (req.priority() != null && !req.priority().isBlank()) {
-     doc.setPriority(req.priority());
-    }
-    doc.setDueDate(req.dueDate());
+   var doc = new Document(req.title().trim(), req.description(), stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize(), owner);
+   if (req.priority() != null && !req.priority().isBlank()) {
+    doc.setPriority(req.priority());
+   }
+   doc.setDueDate(req.dueDate());
    
    if (req.categoryId() != null) {
     Category cat = categories.findById(req.categoryId()).orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Category not found"));
@@ -85,8 +79,10 @@ public class DocumentService {
    log(doc, owner, "DOCUMENT_UPLOADED", "Initial version v1 uploaded for approval");
    reviewers.forEach(r -> notificationService.notifyUser(r, "Document Review Assigned", owner.getFullName() + " assigned you to review '" + doc.getTitle() + "'", "ASSIGNED"));
    return map(doc);
-  } catch (IOException e) {
-   throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store document");
+  } catch (Exception e) {
+   storageService.deleteFile(stored);
+   if (e instanceof ApiException ae) throw ae;
+   throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store document: " + e.getMessage());
   }
  }
 
@@ -141,7 +137,7 @@ public class DocumentService {
    throw new ApiException(HttpStatus.FORBIDDEN, "Only a manager or administrator may finalize");
   }
   try {
-   Path pdfPath = storage.resolve(doc.getStoredFileName());
+   Path pdfPath = storageService.resolvePath(doc.getStoredFileName());
    pdfGenerator.appendSignaturePage(pdfPath, doc, user, signatureName);
    doc.updateFileSize(Files.size(pdfPath));
   } catch (IOException e) {
@@ -190,12 +186,10 @@ public class DocumentService {
    if (user.getRole() != Role.ADMINISTRATOR) {
     throw new ApiException(HttpStatus.FORBIDDEN, "Only an administrator can permanently delete documents");
    }
-   try {
-    java.nio.file.Files.deleteIfExists(java.nio.file.Path.of("uploads", doc.getStoredFileName()));
-    for (var v : doc.getVersions()) {
-     java.nio.file.Files.deleteIfExists(java.nio.file.Path.of("uploads", v.getStoredFileName()));
-    }
-   } catch (Exception ignored) {}
+   storageService.deleteFile(doc.getStoredFileName());
+   for (var v : doc.getVersions()) {
+    storageService.deleteFile(v.getStoredFileName());
+   }
    docs.delete(doc);
   }
 
@@ -218,12 +212,8 @@ public class DocumentService {
   if (!doc.getOwner().getId().equals(user.getId()) && user.getRole() != Role.ADMINISTRATOR) {
    throw new ApiException(HttpStatus.FORBIDDEN, "Only the uploader or administrator may modify");
   }
-  if (file.isEmpty() || !"application/pdf".equals(file.getContentType())) {
-   throw new ApiException(HttpStatus.BAD_REQUEST, "Only PDF files are accepted");
-  }
+  String stored = storageService.storeFile(file);
   try {
-   String stored = UUID.randomUUID() + ".pdf";
-   Files.copy(file.getInputStream(), storage.resolve(stored));
    int nextVersion = (doc.getCurrentVersion() != null ? doc.getCurrentVersion() : 1) + 1;
    doc.replaceFile(stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize());
    doc.setCurrentVersion(nextVersion);
@@ -267,8 +257,10 @@ public class DocumentService {
    final int vNum = nextVersion;
    reviewers.forEach(r -> notificationService.notifyUser(r, "Document Review Assigned", user.getFullName() + " assigned you to review '" + doc.getTitle() + "' (v" + vNum + ")", "ASSIGNED"));
    return map(doc);
-  } catch (IOException e) {
-   throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to replace PDF");
+  } catch (Exception e) {
+   storageService.deleteFile(stored);
+   if (e instanceof ApiException ae) throw ae;
+   throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to replace PDF: " + e.getMessage());
   }
  }
 
@@ -280,13 +272,8 @@ public class DocumentService {
   if (doc.getStatus() == DocumentStatus.ARCHIVED || doc.getStatus() == DocumentStatus.SIGNED) {
    throw new ApiException(HttpStatus.CONFLICT, "Cannot upload a new version to a finalized or archived document");
   }
-  if (file.isEmpty() || !"application/pdf".equals(file.getContentType())) {
-   throw new ApiException(HttpStatus.BAD_REQUEST, "Only PDF files are accepted");
-  }
+  String stored = storageService.storeFile(file);
   try {
-   Files.createDirectories(storage);
-   String stored = UUID.randomUUID() + ".pdf";
-   Files.copy(file.getInputStream(), storage.resolve(stored));
    int nextVersion = (doc.getCurrentVersion() != null ? doc.getCurrentVersion() : 1) + 1;
    doc.replaceFile(stored, Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"), file.getSize());
    doc.setCurrentVersion(nextVersion);
@@ -311,8 +298,10 @@ public class DocumentService {
    final int vNum = nextVersion;
    doc.getApprovals().forEach(r -> notificationService.notifyUser(r.getReviewer(), "New Document Version", user.getFullName() + " uploaded version v" + vNum + " for '" + doc.getTitle() + "'", "ASSIGNED"));
    return map(doc);
-  } catch (IOException e) {
-   throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store version PDF");
+  } catch (Exception e) {
+   storageService.deleteFile(stored);
+   if (e instanceof ApiException ae) throw ae;
+   throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to store version PDF: " + e.getMessage());
   }
  }
 
@@ -351,15 +340,7 @@ public class DocumentService {
   access(id, user);
   var ver = documentVersionRepository.findByDocumentIdAndId(id, versionId)
     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Document version not found"));
-  try {
-   Path p = storage.resolve(ver.getStoredFileName());
-   if (!Files.exists(p)) {
-    throw new ApiException(HttpStatus.NOT_FOUND, "Version file does not exist on storage");
-   }
-   return new org.springframework.core.io.UrlResource(p.toUri());
-  } catch (java.net.MalformedURLException e) {
-   throw new ApiException(HttpStatus.NOT_FOUND, "File not found");
-  }
+  return storageService.loadAsResource(ver.getStoredFileName());
  }
 
  public CommentResponse comment(Long id, CommentRequest req, User user) {
@@ -384,89 +365,83 @@ public class DocumentService {
    throw new ApiException(HttpStatus.FORBIDDEN, "Only the owner or administrator may delete");
   }
   var allVersions = documentVersionRepository.findByDocumentIdOrderByVersionNumberDesc(id);
+  storageService.deleteFile(doc.getStoredFileName());
+  for (var v : allVersions) {
+   storageService.deleteFile(v.getStoredFileName());
+  }
   docs.delete(doc);
-  try {
-   Files.deleteIfExists(storage.resolve(doc.getStoredFileName()));
-   for (var v : allVersions) {
-    Files.deleteIfExists(storage.resolve(v.getStoredFileName()));
-   }
-  } catch (IOException ignored) {}
  }
 
  @Transactional(readOnly = true)
  public org.springframework.core.io.Resource file(Long id, User user) {
   var doc = access(id, user);
-  try {
-   return new org.springframework.core.io.UrlResource(storage.resolve(doc.getStoredFileName()).toUri());
-  } catch (java.net.MalformedURLException e) {
-   throw new ApiException(HttpStatus.NOT_FOUND, "File not found");
-  }
+  return storageService.loadAsResource(doc.getStoredFileName());
  }
 
-  @Transactional(readOnly = true)
-  public List<ActivityResponse> activity(Long id, User user) {
-   access(id, user);
-   return activity.findTop20ByDocumentIdOrderByCreatedAtDesc(id).stream().map(a -> new ActivityResponse(
-    a.getActor().getFullName(),
-    a.getAction(),
-    a.getActionType(),
-    a.getDetail(),
-    a.getIpAddress(),
-    a.getBrowser(),
-    a.getCreatedAt()
-   )).toList();
-  }
-
-  private Document access(Long id, User user) {
-   var d = docs.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Document not found"));
-   boolean reviewer = d.getApprovals().stream().anyMatch(a -> a.getReviewer().getId().equals(user.getId()));
-   if (user.getRole() != Role.ADMINISTRATOR && !d.getOwner().getId().equals(user.getId()) && !reviewer) {
-    throw new ApiException(HttpStatus.FORBIDDEN, "You cannot access this document");
+   @Transactional(readOnly = true)
+   public List<ActivityResponse> activity(Long id, User user) {
+    access(id, user);
+    return activity.findTop20ByDocumentIdOrderByCreatedAtDesc(id).stream().map(a -> new ActivityResponse(
+     a.getActor().getFullName(),
+     a.getAction(),
+     a.getActionType(),
+     a.getDetail(),
+     a.getIpAddress(),
+     a.getBrowser(),
+     a.getCreatedAt()
+    )).toList();
    }
-   return d;
-  }
 
-  private void log(Document d, User u, String action, String detail) {
-   String ip = null;
-   String browser = null;
-   try {
-    var attrs = (org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
-    if (attrs != null) {
-     var req = attrs.getRequest();
-     ip = req.getHeader("X-Forwarded-For");
-     if (ip == null || ip.isBlank()) {
-      ip = req.getRemoteAddr();
-     }
-     browser = req.getHeader("User-Agent");
+   private Document access(Long id, User user) {
+    var d = docs.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Document not found"));
+    boolean reviewer = d.getApprovals().stream().anyMatch(a -> a.getReviewer().getId().equals(user.getId()));
+    if (user.getRole() != Role.ADMINISTRATOR && !d.getOwner().getId().equals(user.getId()) && !reviewer) {
+     throw new ApiException(HttpStatus.FORBIDDEN, "You cannot access this document");
     }
-   } catch (Exception ignored) {}
-   activity.save(new ActivityLog(d, u, action, detail, ip, browser));
-  }
+    return d;
+   }
 
- private DocumentResponse map(Document d) {
-  return new DocumentResponse(
-   d.getId(),
-   d.getTitle(),
-   d.getDescription(),
-   d.getOriginalFileName(),
-   d.getFileSize(),
-   d.getStatus(),
-   d.getPriority(),
-   d.getDueDate(),
-   d.getCurrentVersion(),
-   d.getOwner().getFullName(),
-   d.getOwner().getId(),
-   d.getDepartment() != null ? d.getDepartment().getId() : null,
-   d.getDepartment() != null ? d.getDepartment().getName() : null,
-   d.getCategory() != null ? d.getCategory().getId() : null,
-   d.getCategory() != null ? d.getCategory().getName() : null,
-    d.getTags().stream().map(Tag::getName).sorted().toList(),
-    d.getCreatedAt(),
-    d.getArchivedAt(),
-    d.getArchivedBy() != null ? d.getArchivedBy().getFullName() : null,
-    d.getArchivedBy() != null ? d.getArchivedBy().getId() : null,
-    d.getArchiveReason(),
-    d.getApprovals().stream().map(a -> new Reviewer(a.getReviewer().getId(), a.getReviewer().getFullName(), a.getDecision(), a.getDecidedAt())).toList()
-  );
- }
+   private void log(Document d, User u, String action, String detail) {
+    String ip = null;
+    String browser = null;
+    try {
+     var attrs = (org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+     if (attrs != null) {
+      var req = attrs.getRequest();
+      ip = req.getHeader("X-Forwarded-For");
+      if (ip == null || ip.isBlank()) {
+       ip = req.getRemoteAddr();
+      }
+      browser = req.getHeader("User-Agent");
+     }
+    } catch (Exception ignored) {}
+    activity.save(new ActivityLog(d, u, action, detail, ip, browser));
+   }
+
+  private DocumentResponse map(Document d) {
+   return new DocumentResponse(
+    d.getId(),
+    d.getTitle(),
+    d.getDescription(),
+    d.getOriginalFileName(),
+    d.getFileSize(),
+    d.getStatus(),
+    d.getPriority(),
+    d.getDueDate(),
+    d.getCurrentVersion(),
+    d.getOwner().getFullName(),
+    d.getOwner().getId(),
+    d.getDepartment() != null ? d.getDepartment().getId() : null,
+    d.getDepartment() != null ? d.getDepartment().getName() : null,
+    d.getCategory() != null ? d.getCategory().getId() : null,
+    d.getCategory() != null ? d.getCategory().getName() : null,
+     d.getTags().stream().map(Tag::getName).sorted().toList(),
+     d.getCreatedAt(),
+     d.getArchivedAt(),
+     d.getArchivedBy() != null ? d.getArchivedBy().getFullName() : null,
+     d.getArchivedBy() != null ? d.getArchivedBy().getId() : null,
+     d.getArchiveReason(),
+     d.getApprovals().stream().map(a -> new Reviewer(a.getReviewer().getId(), a.getReviewer().getFullName(), a.getDecision(), a.getDecidedAt())).toList()
+   );
+  }
 }
