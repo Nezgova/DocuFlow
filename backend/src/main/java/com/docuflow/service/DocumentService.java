@@ -403,24 +403,45 @@ public class DocumentService {
   }
  }
 
- @Transactional(readOnly = true)
- public List<ActivityResponse> activity(Long id, User user) {
-  access(id, user);
-  return activity.findTop20ByDocumentIdOrderByCreatedAtDesc(id).stream().map(a -> new ActivityResponse(a.getActor().getFullName(), a.getAction(), a.getDetail(), a.getCreatedAt())).toList();
- }
-
- private Document access(Long id, User user) {
-  var d = docs.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Document not found"));
-  boolean reviewer = d.getApprovals().stream().anyMatch(a -> a.getReviewer().getId().equals(user.getId()));
-  if (user.getRole() != Role.ADMINISTRATOR && !d.getOwner().getId().equals(user.getId()) && !reviewer) {
-   throw new ApiException(HttpStatus.FORBIDDEN, "You cannot access this document");
+  @Transactional(readOnly = true)
+  public List<ActivityResponse> activity(Long id, User user) {
+   access(id, user);
+   return activity.findTop20ByDocumentIdOrderByCreatedAtDesc(id).stream().map(a -> new ActivityResponse(
+    a.getActor().getFullName(),
+    a.getAction(),
+    a.getActionType(),
+    a.getDetail(),
+    a.getIpAddress(),
+    a.getBrowser(),
+    a.getCreatedAt()
+   )).toList();
   }
-  return d;
- }
 
- private void log(Document d, User u, String action, String detail) {
-  activity.save(new ActivityLog(d, u, action, detail));
- }
+  private Document access(Long id, User user) {
+   var d = docs.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Document not found"));
+   boolean reviewer = d.getApprovals().stream().anyMatch(a -> a.getReviewer().getId().equals(user.getId()));
+   if (user.getRole() != Role.ADMINISTRATOR && !d.getOwner().getId().equals(user.getId()) && !reviewer) {
+    throw new ApiException(HttpStatus.FORBIDDEN, "You cannot access this document");
+   }
+   return d;
+  }
+
+  private void log(Document d, User u, String action, String detail) {
+   String ip = null;
+   String browser = null;
+   try {
+    var attrs = (org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+    if (attrs != null) {
+     var req = attrs.getRequest();
+     ip = req.getHeader("X-Forwarded-For");
+     if (ip == null || ip.isBlank()) {
+      ip = req.getRemoteAddr();
+     }
+     browser = req.getHeader("User-Agent");
+    }
+   } catch (Exception ignored) {}
+   activity.save(new ActivityLog(d, u, action, detail, ip, browser));
+  }
 
  private DocumentResponse map(Document d) {
   return new DocumentResponse(

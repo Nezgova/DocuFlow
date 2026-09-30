@@ -38,14 +38,16 @@ public class AuthService {
     long uploaded = documents.countByOwner(user);
     long approved = approvals.countByReviewerAndDecision(user, ApprovalDecision.APPROVED);
     long pending = approvals.countByReviewerAndDecision(user, ApprovalDecision.PENDING);
-    var recent = activityLogs.findTop20ByActorOrderByCreatedAtDesc(user).stream()
-      .map(log -> new ActivityItemResponse(
-        log.getAction(),
-        log.getDetail(),
-        log.getDocument().getTitle(),
-        log.getDocument().getId(),
-        log.getCreatedAt()
-      )).toList();
+     var recent = activityLogs.findTop20ByActorOrderByCreatedAtDesc(user).stream()
+       .map(log -> new ActivityItemResponse(
+         log.getAction(),
+         log.getDetail(),
+         log.getDocument().getTitle(),
+         log.getDocument().getId(),
+         log.getIpAddress(),
+         log.getBrowser(),
+         log.getCreatedAt()
+       )).toList();
     return new UserProfileResponse(map(user), uploaded, approved, pending, recent);
   }
 
