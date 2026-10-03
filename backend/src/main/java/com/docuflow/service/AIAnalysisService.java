@@ -68,7 +68,7 @@ public class AIAnalysisService {
             ObjectNodeRequest requestBodyObj = new ObjectNodeRequest(prompt);
             String jsonPayload = objectMapper.writeValueAsString(requestBodyObj);
 
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey.trim();
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + geminiApiKey.trim();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
