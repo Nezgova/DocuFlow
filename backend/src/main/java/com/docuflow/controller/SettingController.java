@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/settings")
+@RequestMapping("/settings")
 public class SettingController {
     private final SettingService settingService;
 
