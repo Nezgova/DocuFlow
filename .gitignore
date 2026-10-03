@@ -19,3 +19,4 @@ logs/
 
 # Project Status / Local Roadmap Tracking
 PROJECT_STATUS.md
+backend/src/main/resources/application.yml

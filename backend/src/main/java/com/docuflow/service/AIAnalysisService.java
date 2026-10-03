@@ -25,7 +25,7 @@ public class AIAnalysisService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(15))
+            .connectTimeout(Duration.ofSeconds(20))
             .build();
 
     public AIAnalysisResponse analyzePdf(MultipartFile file) {
@@ -44,10 +44,10 @@ public class AIAnalysisService {
         String defaultTitle = originalFilename.replaceAll("\\.[^.]+$", "");
 
         if (geminiApiKey == null || geminiApiKey.trim().isEmpty() || geminiApiKey.equals("your-gemini-api-key-here")) {
-            // Fallback intelligence if Gemini API key is not configured
+            System.err.println("[DocuFlow AI] Warning: GEMINI_API_KEY is not configured or is set to placeholder.");
             return new AIAnalysisResponse(
                     defaultTitle,
-                    "Automatically processed document with DocuFlow AI extraction.",
+                    "Automatically processed document with DocuFlow AI extraction (API key missing).",
                     "General",
                     "General",
                     List.of("document", "review"),
@@ -78,12 +78,13 @@ public class AIAnalysisService {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
+            System.out.println("[DocuFlow AI] Gemini API Response Status: " + response.statusCode());
+
             if (response.statusCode() == 200) {
                 JsonNode root = objectMapper.readTree(response.body());
                 JsonNode textNode = root.path("candidates").path(0).path("content").path("parts").path(0).path("text");
                 if (!textNode.isMissingNode()) {
                     String rawText = textNode.asText().trim();
-                    // Clean potential markdown blocks
                     if (rawText.startsWith("```json")) {
                         rawText = rawText.substring(7);
                     }
@@ -115,14 +116,18 @@ public class AIAnalysisService {
 
                     return new AIAnalysisResponse(title, description, category, department, tags, priority);
                 }
+            } else {
+                System.err.println("[DocuFlow AI Error] Body: " + response.body());
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.err.println("[DocuFlow AI Exception]: " + e.getMessage());
+            e.printStackTrace();
         }
 
         // Fallback on error
         return new AIAnalysisResponse(
                 defaultTitle,
-                "AI analysis completed with default parameters.",
+                "AI analysis completed with fallback parameters.",
                 "General",
                 "General",
                 List.of("analyzed"),
