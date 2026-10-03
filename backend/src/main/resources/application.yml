@@ -24,3 +24,4 @@ app:
     secret: ${JWT_SECRET:development-secret-development-secret-32}
     expiration-ms: 86400000
   storage-dir: ${DOCUMENT_STORAGE_DIR:uploads}
+  gemini-api-key: ${GEMINI_API_KEY:}
